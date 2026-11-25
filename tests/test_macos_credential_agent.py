@@ -39,7 +39,7 @@ class AgentTests(unittest.TestCase):
                 zipped.writestr('manifest.json',json.dumps({'certificate_sha1':agent.CERTIFICATE,'files':{'MailAICredentialAgent':{'sha256':hashlib.sha256(payload).hexdigest(),'identifier':agent.IDENTIFIER}}}))
             archive=buffer.getvalue();target.write_bytes(archive)
             user=root/'user'
-            with patch.object(sys,'platform','darwin'),patch.object(sys,'frozen',True,create=True),patch.object(agent,'APP_DIR',bundle),patch.object(agent,'USER_DIR',user),patch.object(agent,'ARCHIVE_SHA256',hashlib.sha256(archive).hexdigest()),patch.object(agent.subprocess,'run') as verify:
+            with patch.object(agent.platform,'machine',return_value='arm64'),patch.object(sys,'platform','darwin'),patch.object(sys,'frozen',True,create=True),patch.object(agent,'APP_DIR',bundle),patch.object(agent,'USER_DIR',user),patch.object(agent,'ARCHIVE_SHA256',hashlib.sha256(archive).hexdigest()),patch.object(agent.subprocess,'run') as verify:
                 target.write_bytes(archive+b'tampered')
                 with self.assertRaises(ValueError):agent.install()
                 verify.assert_not_called()
@@ -48,5 +48,16 @@ class AgentTests(unittest.TestCase):
                 installed.symlink_to(root/'elsewhere')
                 with self.assertRaises(ValueError):agent.install()
                 self.assertFalse((root/'elsewhere').exists());verify.assert_not_called()
+
+    def test_signed_reader_archives_match_their_runtime_pins_and_architecture(self):
+        for arch, cpu in [('arm64', 0x0100000C), ('x86_64', 0x01000007)]:
+            version, expected = agent.archive_identity(arch)
+            archive = Path(__file__).resolve().parents[1] / 'app/native' / f'credential-agent-{version}.zip'
+            self.assertEqual(hashlib.sha256(archive.read_bytes()).hexdigest(), expected)
+            with zipfile.ZipFile(archive) as package:
+                for name in ('MailAICredentialAgent', 'MailAICredentialMigration'):
+                    header = package.read(name)[:8]
+                    self.assertEqual(header[:4], b'\xcf\xfa\xed\xfe')
+                    self.assertEqual(int.from_bytes(header[4:8], 'little'), cpu)
 
 if __name__=='__main__':unittest.main()

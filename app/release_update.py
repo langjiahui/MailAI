@@ -32,6 +32,7 @@ SIGNED_MANIFEST_URL = DEFAULT_MANIFEST_URL.replace('latest.json', 'latest.signed
 GITHUB_API_URL = "https://api.github.com/repos/langjiahui/MailAI/releases"
 GITHUB_RELEASE_URL = "https://github.com/langjiahui/MailAI/releases"
 GITHUB_ASSET_NAMES = update_mirror.RELEASE_ASSETS
+MACOS_PACKAGE_DEVICES = {"macos-arm64", update_mirror.INTEL_DEVICE}
 _NETWORK_ERRORS = (OSError, http.client.HTTPException)
 MANIFEST_MAX_BYTES = 1024 * 1024
 DOWNLOAD_MAX_BYTES = 500 * 1024 * 1024
@@ -80,6 +81,8 @@ def device_key(system: str | None = None, machine: str | None = None) -> str:
         return "windows-x64"
     if system == "darwin" and machine in {"arm64", "aarch64"}:
         return "macos-arm64"
+    if system == "darwin" and machine in {"amd64", "x86_64", "x64"}:
+        return update_mirror.INTEL_DEVICE
     return f"{system or 'unknown'}-{machine or 'unknown'}"
 
 
@@ -228,7 +231,7 @@ def evaluate_manifest(manifest: dict, *, device: str | None = None, allow_app=Fa
         digest = str(raw_asset.get("sha256") or "").strip().lower()
         if not re.fullmatch(r"[a-f0-9]{64}", digest):
             raise ValueError("安装包缺少有效 SHA-256")
-        expected_suffix = ".zip" if app_update else ".exe" if device == "windows-x64" else ".pkg" if device == "macos-arm64" else ""
+        expected_suffix = ".zip" if app_update else ".exe" if device == "windows-x64" else ".pkg" if device in MACOS_PACKAGE_DEVICES else ""
         if expected_suffix and not urllib.parse.urlparse(url).path.lower().endswith(expected_suffix):
             raise ValueError(f"{device} 安装包格式不正确")
         asset = {"url": url, "sha256": digest, "size": int(raw_asset.get("size") or 0)}
@@ -277,14 +280,13 @@ def check(*, force: bool = False) -> dict:
             return dict(cached)
     manifest_url = os.getenv("MAILAI_UPDATE_MANIFEST_URL", DEFAULT_MANIFEST_URL).strip()
     if manifest_url == DEFAULT_MANIFEST_URL:
-        mac_desktop = device_key() == "macos-arm64" and FROZEN
-        loader = _official_github_manifest if mac_desktop else (
-            lambda: _read_manifest(manifest_url)
-        )
-        if mac_desktop:
-            manifest = update_routing.discover(loader, current_version(), preferred_asset=update_mirror.MAC_APP_DEVICE)
+        device = device_key()
+        if FROZEN and device in MACOS_PACKAGE_DEVICES:
+            preferred_asset = update_mirror.MAC_APP_DEVICE if device == "macos-arm64" else device
+            manifest = update_routing.discover(_official_github_manifest, current_version(),
+                                               preferred_asset=preferred_asset)
         else:
-            manifest = update_routing.discover(loader, current_version())
+            manifest = update_routing.discover(lambda: _read_manifest(manifest_url), current_version())
     else:
         manifest = _read_manifest(manifest_url)
     result = evaluate_manifest(manifest, allow_app=manifest_url == DEFAULT_MANIFEST_URL)
@@ -605,7 +607,7 @@ def _read_ready_update() -> dict | None:
             _ready_update_path().unlink(missing_ok=True)
             return None
         device = release["device"]
-        if (device != device_key() or device not in {"windows-x64", "macos-arm64"}
+        if (device != device_key() or device not in {"windows-x64", *MACOS_PACKAGE_DEVICES}
                 or release.get("latest_version") != version or not re.fullmatch(r"[0-9.]+", version)):
             return None
         size = int(release["asset"]["size"])

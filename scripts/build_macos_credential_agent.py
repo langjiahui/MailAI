@@ -26,9 +26,10 @@ def main():
         entries[name]={'sha256':hashlib.sha256(target.read_bytes()).hexdigest(),'identifier':identifier,'source_sha256':hashlib.sha256((ROOT/'native'/source).read_bytes()).hexdigest()}
     if args.probes_only:
         sys.path.insert(0,str(ROOT))
-        from app.macos_credential_agent import ARCHIVE_SHA256
-        sealed=ROOT/'app/native/credential-agent-v1.zip'
-        if hashlib.sha256(sealed.read_bytes()).hexdigest()!=ARCHIVE_SHA256:
+        from app.macos_credential_agent import archive_identity
+        reader_version, archive_hash = archive_identity(architecture)
+        sealed = ROOT / 'app/native' / f'credential-agent-{reader_version}.zip'
+        if hashlib.sha256(sealed.read_bytes()).hexdigest() != archive_hash:
             raise ValueError('Refusing changed immutable reader archive')
         shutil.copy2(sealed,output/sealed.name)
     else:

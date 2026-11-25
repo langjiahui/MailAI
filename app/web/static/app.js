@@ -5658,7 +5658,7 @@ async function shareAppWithSystem() {
 }
 
 function appDeviceName(device) {
-  return ({'windows-x64':'Windows x64', get 'macos-arm64'() { return mailaiText('macOS · Apple 芯片'); }})[device] || device || mailaiText('暂未识别');
+  return ({'windows-x64':'Windows x64', 'macos-x64':'macOS · Intel', get 'macos-arm64'() { return mailaiText('macOS · Apple 芯片'); }})[device] || device || mailaiText('暂未识别');
 }
 
 function renderAppVersion(result) {

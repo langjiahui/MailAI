@@ -30,7 +30,7 @@ class FakeGitHub:
         self.version = '3.8.3'
         self.jobs = [dict(id=n, name=name, conclusion='success') for n, name in
                      enumerate(['metadata', 'quality', *builds.PACKAGES], 1)]
-        self.jobs.append(dict(id=6, name='publish', conclusion='skipped'))
+        self.jobs.append(dict(id=7, name='publish', conclusion='skipped'))
         self.artifacts = []
         self.archives = {}
         self.files = {}
@@ -81,7 +81,7 @@ class BuildProvenanceTest(unittest.TestCase):
     def test_complete_private_build_is_bound_to_tree_version_and_artifact_ids(self):
         api=FakeGitHub()
         proof=builds.source(api,api.run,TREE,'3.8.3',NOW)
-        self.assertEqual(proof['source_artifacts'],'10,11,12')
+        self.assertEqual(proof['source_artifacts'],'10,11,12,13')
         self.assertEqual(proof['source_sha'],HEAD)
         self.assertEqual(builds.find(api,TREE,'3.8.3',NOW),proof)
         self.assertIsNone(builds.find(api,'c'*40,'3.8.3',NOW))
@@ -143,7 +143,7 @@ class RestoreTest(unittest.TestCase):
         api=FakeGitHub()
         with tempfile.TemporaryDirectory() as directory:
             output=Path(directory)/'assets'
-            builds.restore(api,42,1,'10,11,12',TREE,'3.8.3',output,NOW)
+            builds.restore(api,42,1,'10,11,12,13',TREE,'3.8.3',output,NOW)
             self.assertEqual({p.name:p.read_bytes() for p in output.iterdir()},
                              {name:data for files in api.files.values() for name,data in files.items()})
 
@@ -154,25 +154,36 @@ class RestoreTest(unittest.TestCase):
             with tempfile.TemporaryDirectory() as directory:
                 output=Path(directory)/'assets'
                 with self.subTest(mutation=mutation),self.assertRaises(ValueError):
-                    builds.restore(api,42,2 if mutation=='attempt' else 1,'10,11' if mutation=='ids' else '10,11,12',TREE,'3.8.3',output,NOW)
+                    builds.restore(api,42,2 if mutation=='attempt' else 1,'10,11' if mutation=='ids' else '10,11,12,13',TREE,'3.8.3',output,NOW)
                 self.assertFalse(output.exists())
 
     def test_nested_files_and_incorrect_installer_checksums_never_escape_staging(self):
-        for mutation in ['traversal','checksum']:
-            api=FakeGitHub();files=deepcopy(api.files['release-windows-x64'])
-            if mutation=='traversal':files['../outside']=b'bad'
-            else:files['MailAI-Windows-x64-Setup.exe']=b'changed installer'
-            api.repack(10,files)
+        for mutation in ['traversal', 'checksum', 'intel-dmg-checksum']:
+            api = FakeGitHub()
+            artifact = 'release-macos-x64' if mutation == 'intel-dmg-checksum' else 'release-windows-x64'
+            artifact_id = next(item['id'] for item in api.artifacts if item['name'] == artifact)
+            files = deepcopy(api.files[artifact])
+            if mutation == 'traversal':
+                files['../outside'] = b'bad'
+            elif mutation == 'checksum':
+                files['MailAI-Windows-x64-Setup.exe'] = b'changed installer'
+            else:
+                files['MailAI-macOS-x64.dmg'] = b'changed disk image'
+            api.repack(artifact_id, files)
             with tempfile.TemporaryDirectory() as directory:
                 output=Path(directory)/'assets'
                 with self.subTest(mutation=mutation),self.assertRaises(ValueError):
-                    builds.restore(api,42,1,'10,11,12',TREE,'3.8.3',output,NOW)
+                    builds.restore(api,42,1,'10,11,12,13',TREE,'3.8.3',output,NOW)
                 self.assertFalse(output.exists());self.assertFalse((Path(directory)/'outside').exists())
 
     def test_fresh_tag_builds_still_run_the_original_native_checks_and_signatures(self):
         workflow=(ROOT/'.github/workflows/release.yml').read_text()
-        for platform in builds.PACKAGES:
-            self.assertIn('  '+platform+':\n    needs: metadata',workflow)
+        for platform in ('windows-x64', 'linux-x64'):
+            self.assertIn('  ' + platform + ':\n    needs: metadata', workflow)
+        self.assertIn("name: ${{ matrix.device }}", workflow)
+        self.assertIn("- device: macos-arm64\n            runner: macos-15", workflow)
+        self.assertIn("- device: macos-x64\n            runner: macos-15-intel", workflow)
+        self.assertIn("needs.macos.result == 'success'", workflow)
         self.assertIn("needs.quality.result == 'success'",workflow)
         self.assertIn("github.event_name == 'push'",workflow)
         self.assertIn('Scan the release commit history for credentials',workflow)

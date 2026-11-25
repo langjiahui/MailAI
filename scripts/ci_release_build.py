@@ -29,8 +29,10 @@ SHA = re.compile(r'[a-f0-9]{40}')
 VERSION = re.compile(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)')
 PACKAGES = {'windows-x64': 'MailAI-Windows-x64-Setup.exe',
             'macos-arm64': 'MailAI-macOS-arm64.pkg',
+            'macos-x64': 'MailAI-macOS-x64.pkg',
             'linux-x64': 'MailAI-Linux-x64.AppImage'}
 FILES = {'release-' + platform: {name, name + '.sha256'} for platform, name in PACKAGES.items()}
+FILES['release-macos-x64'].update({'MailAI-macOS-x64.dmg', 'MailAI-macOS-x64.dmg.sha256'})
 FILES['release-macos-arm64'].update({'MailAI-macOS-arm64.dmg', 'MailAI-macOS.zip', 'MailAI-macOS.zip.sha256'})
 
 
@@ -111,7 +113,7 @@ def verify_assets(folder):
     expected = set().union(*FILES.values())
     if {path.name for path in folder.iterdir()} != expected:
         raise ValueError('Installer files are missing or unexpected')
-    for name in (*PACKAGES.values(), 'MailAI-macOS.zip'):
+    for name in (*PACKAGES.values(), 'MailAI-macOS.zip', 'MailAI-macOS-x64.dmg'):
         checksum = (folder / (name + '.sha256')).read_text().strip()
         match = re.fullmatch(r'([a-fA-F0-9]{64})\s+\*?([^\r\n]+)', checksum)
         with (folder / name).open('rb') as stream:

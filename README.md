@@ -19,6 +19,7 @@ MailAI 是一款**本地优先（Local-First）、AI 驱动**的开源跨平台�
 |---|---|---|
 | Windows | Windows 10/11 x64 | [下载 Windows 安装程序](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-Windows-x64-Setup.exe) |
 | macOS | Apple Silicon（M1/M2/M3/M4） | [下载 PKG 安装程序](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-macOS-arm64.pkg) · [下载 DMG 镜像](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-macOS-arm64.dmg) |
+| macOS | Intel（x86_64） | [下载 Intel PKG 安装程序](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-macOS-x64.pkg) · [下载 Intel DMG 镜像](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-macOS-x64.dmg) |
 | Linux | x64（AppImage，免安装） | [下载 Linux AppImage](https://github.com/langjiahui/MailAI/releases/latest/download/MailAI-Linux-x64.AppImage) |
 
 - 中国大陆用户可访问 [AtomGit 国内官方发布页](https://atomgit.com/langjiahui2011/MailAI/releases) 下载安装包。GitHub 与 AtomGit 发布同一份安装包字节和 SHA-256 校验值，无需注册账号。

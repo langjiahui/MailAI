@@ -8,6 +8,7 @@ import hashlib
 import io
 import json
 import os
+import platform
 import re
 from pathlib import Path
 import stat
@@ -21,17 +22,27 @@ ACCOUNT='credential-agent-key:v1'
 IDENTIFIER='com.langjiahui.mailai.credential-agent.v1'
 CERTIFICATE='a04567b09e3230ba773b70e6b1343244b387186b'
 ARCHIVE_SHA256='f310603b06ab8811f314e85faac9e316695b4163ed1fe4c1a9a7d4a2164f704b'
+INTEL_ARCHIVE_SHA256 = '0618f96557605fbec22b4865c5e4c37c3f3e08e51cf5a3e3a49ca9d195669fa8'
 ERROR=-1
 _verified_path=None
+
+def archive_identity(architecture):
+    if architecture == 'arm64':
+        return 'v1', ARCHIVE_SHA256
+    if architecture == 'x86_64':
+        return 'v1-x86_64', INTEL_ARCHIVE_SHA256
+    raise ValueError('Unsupported credential reader architecture')
+
 
 def install():
     global _verified_path
     if sys.platform!='darwin' or not getattr(sys,'frozen',False):
         raise RuntimeError('Credential agent requires a signed installed application')
-    archive=(APP_DIR/'app/native/credential-agent-v1.zip').read_bytes()
-    if hashlib.sha256(archive).hexdigest()!=ARCHIVE_SHA256:
+    reader_version, archive_hash = archive_identity(platform.machine())
+    archive = (APP_DIR / 'app/native' / f'credential-agent-{reader_version}.zip').read_bytes()
+    if hashlib.sha256(archive).hexdigest() != archive_hash:
         raise ValueError('Credential agent archive identity mismatch')
-    directory=USER_DIR/'credential-agent/v1'
+    directory = USER_DIR / 'credential-agent' / reader_version
     directory.mkdir(parents=True,exist_ok=True,mode=0o700)
     for parent in (directory.parent,directory):
         attributes=parent.lstat()

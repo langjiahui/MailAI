@@ -44,6 +44,25 @@ class Response(io.BytesIO):
 
 
 class MirrorTest(unittest.TestCase):
+    def test_intel_manifest_requires_and_validates_the_exact_pkg(self):
+        manifest = copy.deepcopy(MANIFEST)
+        self.assertNotIn(mirror.INTEL_DEVICE, manifest['assets'])
+        manifest['version'] = '4.9.0'
+        tag = 'v4.9.0'
+        manifest['release_url'] = mirror.GITHUB_RELEASES + '/tag/' + tag
+        for item in manifest['assets'].values():
+            item['url'] = item['url'].replace(TAG, tag)
+        with patch.object(mirror, 'read_channel', return_value=manifest):
+            with self.assertRaises(ValueError):
+                mirror.discover()
+            manifest['assets'][mirror.INTEL_DEVICE] = {
+                'url': f'{mirror.GITHUB_RELEASES}/download/{tag}/{mirror.INTEL_PACKAGE}',
+                'sha256': SHA, 'size': len(DATA),
+            }
+            asset = mirror.discover()['assets'][mirror.INTEL_DEVICE]
+            self.assertTrue(mirror.valid_mirror(asset['mirror_url'], asset['url']))
+            self.assertEqual(asset['mirror_url'], mirror.attachment(tag, mirror.INTEL_PACKAGE))
+
     def setUp(self):
         route = patch.object(resume.update_routing, 'download_source', return_value='atomgit')
         route.start(); self.addCleanup(route.stop)

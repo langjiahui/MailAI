@@ -34,10 +34,13 @@ def release_notes_from_readme(path: Path) -> str:
 
 
 def release_body(version: str, notes: str) -> str:
-    return f"## MailAI {version} 更新内容\n\n{notes}\n\n安装包会根据 Windows x64、Apple Silicon macOS 或 Linux x64 自动匹配。\n"
+    return f"## MailAI {version} 更新内容\n\n{notes}\n\n安装包会根据 Windows x64、macOS（Apple Silicon 或 Intel）或 Linux x64 自动匹配。\n"
 
 
 def main():
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from app.update_mirror import installer_names, MAC_APP_DEVICE, MAC_APP_NAME
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--version", required=True)
     parser.add_argument("--repository", required=True)
@@ -50,13 +53,9 @@ def main():
     version = args.version.lstrip("v")
     tag = args.version if args.version.startswith("v") else f"v{version}"
     notes = args.notes.strip() if args.notes else release_notes_from_readme(args.readme)
-    names = {
-        "windows-x64": "MailAI-Windows-x64-Setup.exe",
-        "macos-arm64": "MailAI-macOS-arm64.pkg",
-        "linux-x64": "MailAI-Linux-x64.AppImage",
-    }
-    if (args.assets / "MailAI-macOS.zip").is_file():
-        names["macos-arm64-app"] = "MailAI-macOS.zip"
+    names = installer_names(version)
+    if (args.assets / MAC_APP_NAME).is_file():
+        names[MAC_APP_DEVICE] = MAC_APP_NAME
     assets = {}
     for device, name in names.items():
         path = args.assets / name
@@ -77,7 +76,6 @@ def main():
     args.output.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     signing_key = os.getenv('UPDATE_SIGNING_KEY', '').strip()
     if signing_key:
-        sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
         from app.update_trust import canonical, verify
         key = Ed25519PrivateKey.from_private_bytes(base64.b64decode(signing_key, validate=True))

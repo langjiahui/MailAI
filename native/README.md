@@ -1,9 +1,10 @@
 # macOS credential reader lifecycle
 
-`app/native/credential-agent-v1.zip` is a sealed, signed archive. Release builds
-must include it byte for byte and must not compile or sign its executable again.
-The application installs the reader at the same private user path and pins both
-the archive hash and certificate/application identifier before execution.
+The Apple Silicon reader is sealed in `app/native/credential-agent-v1.zip`.
+The Intel reader is sealed in `app/native/credential-agent-v1-x86_64.zip`.
+Release builds reuse the signed archives byte for byte. The application selects
+the reader for its own architecture, installs it to a stable private path for
+that architecture, and checks the archive hash and signing identity.
 
 The login Keychain can retain `cdhash:` partition permissions for self-signed
 applications, independent of the designated requirement. Recompiling an app

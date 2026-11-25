@@ -30,6 +30,7 @@ SHA = re.compile(r'[a-f0-9]{40}')
 VERSION = re.compile(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)')
 INSTALLERS = {'windows-x64': 'MailAI-Windows-x64-Setup.exe',
               'macos-arm64': 'MailAI-macOS-arm64.pkg',
+              'macos-x64': 'MailAI-macOS-x64.pkg',
               'linux-x64': 'MailAI-Linux-x64.AppImage'}
 RELEASE_ASSETS = {**INSTALLERS, 'macos-arm64-app': 'MailAI-macOS.zip'}
 
@@ -347,7 +348,8 @@ class Coordinator:
             raise ValueError('Release is not a published formal desktop version')
         assets = {a['name']: a for a in release['assets']}
         expected_updates = RELEASE_ASSETS if offers_macos_app_update(plan['version']) else INSTALLERS
-        required = {'latest.json', 'latest.signed.json', 'MailAI-macOS-arm64.dmg'}
+        required = {'latest.json', 'latest.signed.json', 'MailAI-macOS-arm64.dmg',
+                    'MailAI-macOS-x64.dmg', 'MailAI-macOS-x64.dmg.sha256'}
         required.update(expected_updates.values())
         required.update(name + '.sha256' for name in expected_updates.values())
         if not required <= set(assets) or any(a['state'] != 'uploaded' or a['size'] <= 0
@@ -364,6 +366,12 @@ class Coordinator:
             if (item['url'] != asset['browser_download_url'] or item['size'] != asset['size']
                     or asset.get('digest') != 'sha256:' + item['sha256']):
                 raise ValueError('Published installer metadata differs from the signed manifest')
+        intel_dmg = assets['MailAI-macOS-x64.dmg']
+        intel_checksum = self.api.asset(assets[intel_dmg['name'] + '.sha256']['id']).decode().strip().split()
+        if (len(intel_checksum) != 2 or Path(intel_checksum[1]).name != intel_dmg['name']
+                or not re.fullmatch(r'[0-9a-f]{64}', intel_checksum[0])
+                or intel_dmg.get('digest') != 'sha256:' + intel_checksum[0]):
+            raise ValueError('Published Intel DMG does not match its checksum')
         self.emit('published', url=release['html_url'], version=manifest['version'])
         return manifest
 
