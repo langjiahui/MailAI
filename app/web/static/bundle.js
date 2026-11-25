@@ -1601,7 +1601,6 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
-  "sync.working": ["同步中", "Syncing"],
   "sync.background": ["后台同步中", "Syncing in background"],
   "sync.inboxReady": ["可以开始看邮件了，历史邮件会在后台继续同步。", "Your inbox is ready. Older mail will keep syncing in the background."],
   "sync.viewProgress": ["查看进度", "View progress"],
@@ -39506,7 +39505,7 @@ function mailCardDate(value, now = new Date()) {
     const task = document.getElementById("btn-task-center");
     task.className = "nav-action productivity-outbox-entry";
     task.removeAttribute("data-i18n");
-    task.innerHTML = "<svg class=\"nav-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 14v5h16v-5\"/><path class=\"task-activity-arrow\" d=\"M12 14V4m-4 4 4-4 4 4\"/></svg><span data-i18n=\"task.title\">任务与发件箱</span><i class=\"task-sync-indicator\" data-task-sync-indicator aria-hidden=\"true\" hidden><span data-i18n=\"sync.working\">同步中</span></i><i data-task-count hidden></i>";
+    task.innerHTML = "<svg class=\"nav-icon\" viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 14v5h16v-5\"/><path class=\"task-activity-arrow\" d=\"M12 14V4m-4 4 4-4 4 4\"/></svg><i class=\"task-sync-indicator\" data-task-sync-indicator aria-hidden=\"true\" hidden></i><i data-task-count hidden></i>";
     mailaiBindUI(task, "@aria-label", () => (mailaiText("任务与发件箱")));
     mailaiBindUI(task, "title", () => (mailaiText("任务与发件箱")));
     document.querySelector(".nav-system-cluster").prepend(task);
@@ -46471,7 +46470,8 @@ window.mailaiPrepareReadingMarkup = doc => {
       node.classList.toggle('task-activity-running', Boolean(state?.active));
       if (node.id !== 'btn-task-center') continue;
       const label = mailaiT('task.title') || '任务与发件箱';
-      const details = [sync.running ? mailaiText('同步中') : '',
+      const syncing = sync.running && !sync.canceled;
+      const details = [syncing ? mailaiText('同步中') : '',
         state?.active ? mailaiTemplate`${state.active} 项进行中` : '',
         attention ? mailaiTemplate`${attention} 项需处理` : '', state?.unknown ? mailaiText('状态待确认') : ''].filter(Boolean);
       node.title = [label, ...details].join(' · ');
@@ -46479,7 +46479,7 @@ window.mailaiPrepareReadingMarkup = doc => {
       const badge = node.querySelector('[data-task-count]');
       if (badge) { badge.textContent = attention; badge.hidden = !attention; }
       const indicator = node.querySelector('[data-task-sync-indicator]');
-      if (indicator) indicator.hidden = !sync.running || sync.canceled;
+      if (indicator) indicator.hidden = !syncing || attention > 0;
     }
   }
   function update(accountId, state) {

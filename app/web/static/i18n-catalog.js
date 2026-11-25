@@ -1,6 +1,5 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
-  "sync.working": ["同步中", "Syncing"],
   "sync.background": ["后台同步中", "Syncing in background"],
   "sync.inboxReady": ["可以开始看邮件了，历史邮件会在后台继续同步。", "Your inbox is ready. Older mail will keep syncing in the background."],
   "sync.viewProgress": ["查看进度", "View progress"],

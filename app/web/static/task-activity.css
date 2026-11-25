@@ -15,21 +15,17 @@
 }
 
 #btn-task-center .task-sync-indicator {
-  display:inline-flex; align-items:center; gap:4px;
-  color:inherit; font-size:10px; font-style:normal; white-space:nowrap;
-}
-#btn-task-center .task-sync-indicator::before {
-  content:""; inline-size:5px; block-size:5px; border-radius:50%; background:var(--desk-accent,var(--primary));
+  position:absolute;
+  inset-block-start:4px;
+  inset-inline-end:4px;
+  inline-size:5px;
+  block-size:5px;
+  border-radius:50%;
+  background:var(--desk-accent,var(--primary));
+  pointer-events:none;
 }
 #btn-task-center [data-task-count]:not([hidden]) {
   color:var(--danger-deep); background:var(--danger-soft); font-variant-numeric:tabular-nums;
-}
-@media (min-width:1101px) {
-  #btn-task-center .task-sync-indicator > span { display:inline; }
-}
-@media (max-width:1100px) {
-  #btn-task-center .task-sync-indicator { position:absolute; inset-inline-end:3px; inset-block-end:3px; }
-  #btn-task-center .task-sync-indicator > span { display:none; }
 }
 
 .task-sync-row { --sync-track:var(--desk-line,var(--border)); --sync-fill:var(--desk-accent,var(--primary)); }
