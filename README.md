@@ -5,9 +5,9 @@ MailAI 是一款**本地优先（Local-First）、AI 驱动**的开源跨平台�
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v4.8.3**
+当前版本：**v4.8.4**
 
-本次更新：点击发送后邮件立刻置顶显示在「已发送」列表并支持行内与详情页直接撤销或回退编辑，缩短发送状态刷新延迟，兼容全部亮暗与收集主题及中英文切换。[发布说明](docs/发布-v4.8.3-已发送即时展示与撤回优化.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
+本次更新：优化收件箱与「所有收件箱」点击回顶与列表缓存刷新策略，浏览历史页面时后台新邮件保持当前阅读位置锚定不跳动，再次点击收件箱或「返回列表开头」可立即回到顶部查看最新邮件并加强切换并发守卫。[发布说明](docs/发布-v4.8.4-收件箱置顶回溯与缓存竞争修复.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
 
 ---
 

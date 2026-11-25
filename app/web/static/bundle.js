@@ -23410,9 +23410,9 @@ async function loadMailPages(path, isCurrent = () => true, maxRows = Number.POSI
   return null;
 }
 
-async function loadData({includeAncillary = true, silent = false, requireFresh = false} = {}) {
+async function loadData({includeAncillary = true, silent = false, requireFresh = false, fromStart = false} = {}) {
   if (typeof window !== 'undefined' && window.mailaiMailboxStore?.supports()) {
-    return window.mailaiMailboxStore.load({silent, requireFresh});
+    return window.mailaiMailboxStore.load({silent, requireFresh, fromStart});
   }
   const revision = ++mailLoadRevision;
   const navigationRevision = mailboxNavigationRevision;
@@ -23454,6 +23454,7 @@ async function loadData({includeAncillary = true, silent = false, requireFresh =
     updateSidebar();
     updateDomainFilter();
     applyFilters({silent});
+    if (fromStart) listNode.scrollTop = 0;
     // Mail remains readable even if the optional label catalogue is slow.
     void tagCatalog?.then(() => { if(isCurrent())applyFilters({silent:true}); });
     loadAssistantAlerts();
@@ -23663,8 +23664,9 @@ async function onNavClick(e) {
   // Reload before filtering its rows into the new mailbox.
   let loaded = true;
   if (changingMailbox) {
-    loaded = await loadData();
-    if (loaded === null && transitionRevision === mailboxNavigationRevision) loaded = await loadData();
+    const options = {fromStart: filter === 'status' && value === 'inbox'};
+    loaded = await loadData(options);
+    if (loaded === null && transitionRevision === mailboxNavigationRevision) loaded = await loadData(options);
   }
   if (transitionRevision && transitionRevision !== mailboxNavigationRevision) return;
   updateActiveNav();
@@ -25856,7 +25858,7 @@ function finishMailboxTransition(revision, {immediate = false} = {}) {
   }, remaining);
 }
 
-async function openAccountMailbox(accountId, mailbox) {
+async function openAccountMailbox(accountId, mailbox, {fromStart = false} = {}) {
   if (bulkOperationActive) return toast(mailaiText('批量操作正在执行，请稍候'), 'warn');
   const navigationRevision = ++mailboxNavigationRevision;
   beginMailboxTransition(navigationRevision, `${{get inbox() { return mailaiText('收件箱'); },get sent() { return mailaiText('已发送'); },get drafts() { return mailaiText('草稿箱'); },get favorites() { return mailaiText('我的收藏'); },get trash() { return mailaiText('已删除'); },get local_archive() { return mailaiText('本地归档'); }}[mailbox] || mailbox} · ${(_systemConfig?.accounts || []).find(item => item.id === accountId)?.user || ''}`);
@@ -25906,8 +25908,9 @@ async function openAccountMailbox(accountId, mailbox) {
   }
   // Observe folder failures immediately while the list can finish first.
   const foldersPromise = loadMailboxFolders().then(() => null, error => error);
-  let loaded = await loadData();
-  if (loaded === null && navigationRevision === mailboxNavigationRevision) loaded = await loadData();
+  const options = {fromStart};
+  let loaded = await loadData(options);
+  if (loaded === null && navigationRevision === mailboxNavigationRevision) loaded = await loadData(options);
   if (loaded !== true && navigationRevision === mailboxNavigationRevision) showMailboxLoadFailure();
   finishMailboxTransition(navigationRevision);
   const folderError = await foldersPromise;
@@ -25973,8 +25976,9 @@ async function openUnifiedInbox() {
   currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.mailTags = [];
   currentFilter.search = ''; searchResults = null; advanceMailSearchRevision(); clearTimeout(globalSearchTimer);
   document.getElementById('global-search').value = '';
-  let loaded = await loadData();
-  if (loaded === null && navigationRevision === mailboxNavigationRevision) loaded = await loadData();
+  const options = {fromStart: true};
+  let loaded = await loadData(options);
+  if (loaded === null && navigationRevision === mailboxNavigationRevision) loaded = await loadData(options);
   if (loaded !== true && navigationRevision === mailboxNavigationRevision) showMailboxLoadFailure();
   finishMailboxTransition(navigationRevision);
   if (navigationRevision !== mailboxNavigationRevision) return;
@@ -30091,7 +30095,7 @@ document.getElementById('account-mailbox-nav').addEventListener('click', event =
   if (!button) return;
   const action = button.dataset.accountAction;
   if (action === 'unified') openUnifiedInbox().catch(err => toast(mailaiText('加载所有收件箱失败：') + mailaiSystemMessage(err.message), 'error'));
-  else openAccountMailbox(button.dataset.accountId, action).catch(err => toast(mailaiText('打开邮箱失败：') + mailaiSystemMessage(err.message), 'error'));
+  else openAccountMailbox(button.dataset.accountId, action, {fromStart: action === 'inbox'}).catch(err => toast(mailaiText('打开邮箱失败：') + mailaiSystemMessage(err.message), 'error'));
 });
 document.getElementById('compose-from').addEventListener('change', async event => {
   const accountId = event.target.value;
@@ -31374,7 +31378,7 @@ document.addEventListener('keydown', event => {
     if(detail)current.reading=String(detail.body_html || '').length+String(detail.body_text || '').length<500000
       ? {id:selectedEmailId,account:selectedEmailAccountId,owner:owner(),detail} : null;
   }
-  function paint(entry,{silent=true,restore=false}={}) {
+  function paint(entry,{silent=true,restore=false,fromStart=false}={}) {
     painting=true;
     try {
       current=entry;const rows=rowsOf(entry);mailboxLocalCounts=entry.data.counts;
@@ -31414,24 +31418,28 @@ document.addEventListener('keydown', event => {
       if(first>0 || entry.anchor){button(mailaiText('返回列表开头'),'first',true);if(first>0 && entry.cursors.has(first-1))button(mailaiText('显示上一批'),'previous',true);}
       if(entry.pages.get(last)?.next && rows.length<=mailRenderLimit)button(mailaiText('显示更多'),'next');
       if(entry.error)button(mailaiText('继续加载失败，点击重试'),'next');
-      if(restore){
+      if(fromStart){
+        list.scrollTop=0;
+      }else if(restore){
         const reading=entry.reading;
         if(reading && reading.owner===entry.owner && allEmails.some(row=>row.id===reading.id && (!row._account_id || row._account_id===reading.account))){
           selectedEmailId=reading.id;selectedEmailAccountId=reading.account;selectedEmailDetail=reading.detail;
           document.querySelector('.reading-pane')?.classList.add('show');renderReadingPane(reading.detail);syncSelectedEmailVisual(reading.id,{accountId:reading.account});
         }
         const targetScroll=entry.scroll || 0;
+        const nav=mailboxNavigationRevision;
         list.scrollTop=targetScroll;
-        if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>{if(current===entry && list)list.scrollTop=targetScroll;});
+        if(typeof requestAnimationFrame==='function')requestAnimationFrame(()=>{if(current===entry && live(entry.key,nav))list.scrollTop=targetScroll;});
       }else if(silent && list && list.scrollTop!==priorScroll){
         list.scrollTop=priorScroll;
       }
     } finally {painting=false;}
   }
-  async function fetchPage(entry,index,cursor,signal){
+  async function fetchPage(entry,index,cursor,nav){
     const readSeq=window.mailaiReadMutationSeq?.() || 0;
     const result=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(entry.query))+'&cursor='+encodeURIComponent(cursor || ''),
-      {accountId:entry.owner,signal});
+      {accountId:entry.owner});
+    if(!live(entry.key,nav))return;
     window.mailaiPreserveLocalReadState?.(result.items,entry.owner,readSeq);
     // Reuse unchanged objects so local read/star state and selection stay stable.
     const known=new Map(rowsOf(entry).map(row=>[rowKey(row),row]));
@@ -31441,7 +31449,7 @@ document.addEventListener('keydown', event => {
     entry.data=result;entry.invalid=false;entry.error=false;entry.checked=Date.now();
     trim(entry);return result;
   }
-  async function load({silent=false,force=false,requireFresh=false}={}) {
+  async function load({silent=false,force=false,requireFresh=false,fromStart=false}={}) {
     if(!supports())return null;
     const q=query(),key=keyOf(q),nav=mailboxNavigationRevision,token=++sequence,started=performance.now();
     if(current && current.key!==key)remember();
@@ -31449,14 +31457,15 @@ document.addEventListener('keydown', event => {
     if(!entry || entry.invalid){const derived=derive(q,key);if(derived){entry=derived;entries.set(key,entry);}}
     if(activeRequest && activeRequest.key!==key)activeRequest.controller?.abort();
     const usable=entry?.data && !entry.invalid;
-    if(usable && !force){
-      paint(entry,{silent:true,restore:current?.key!==key});finishMailboxTransition(nav,{immediate:true});trim(entry);
-      if(Date.now()-entry.checked>30000)void refresh(entry,key,nav).catch(()=>{});
+    if(usable && !force && (!fromStart || !entry.anchor && entry.pages.has(0))){
+      paint(entry,{silent:true,restore:!fromStart && current?.key!==key,fromStart});
+      finishMailboxTransition(nav,{immediate:true});trim(entry);
+      if(fromStart || Date.now()-entry.checked>30000)void refresh(entry,key,nav).catch(()=>{});
       return true;
     }
     if(!entry){entry={key,query:q,owner:owner(),pages:new Map(),cursors:new Map([[0,'']]),scroll:0};entries.set(key,entry);}
     const old=current?.key===key && entry.data;
-    if(old && entry.invalid && !force){await refreshWindow(entry,key,nav);finishMailboxTransition(nav);return requireFresh ? !entry.invalid : true;}
+    if(old && entry.invalid && !force && !fromStart){await refreshWindow(entry,key,nav);finishMailboxTransition(nav);return requireFresh ? !entry.invalid : true;}
     if(!old && !silent)document.getElementById('email-list').innerHTML=skeletonRows();
     try {
       if(!entry.pending){
@@ -31465,14 +31474,16 @@ document.addEventListener('keydown', event => {
           const readSeq=window.mailaiReadMutationSeq?.() || 0;
           const response=await api('/api/mailbox/list?filters='+encodeURIComponent(JSON.stringify(q)),{accountId:entry.owner,signal:entry.controller.signal});
           window.mailaiPreserveLocalReadState?.(response.items,entry.owner,readSeq);
+          entry.anchor=0;
           entry.pages=new Map([[0,response]]);entry.cursors=new Map([[0,''],[1,response.next]]);
           entry.data=response;entry.invalid=false;entry.error=false;entry.checked=Date.now();trim(entry);
         })().finally(()=>{entry.pending=null;if(activeRequest===entry)activeRequest=null;});
       }
       await entry.pending;
       if(!live(key,nav))return null;
-      const scroll=old?document.getElementById('email-list').scrollTop:0;
-      paint(entry,{silent:Boolean(old) || silent});if(old)document.getElementById('email-list').scrollTop=scroll;
+      const scroll=old && !fromStart?document.getElementById('email-list').scrollTop:0;
+      paint(entry,{silent:Boolean(old) || silent,fromStart});
+      if(old && !fromStart)document.getElementById('email-list').scrollTop=scroll;
       finishMailboxTransition(nav);
       // These catalogues have their own failure and stale-response handling.
       void window.mailaiRefreshTags?.(entry.owner).then(()=>{if(live(key,nav))paint(entry);}).catch(()=>{});
@@ -31487,14 +31498,15 @@ document.addEventListener('keydown', event => {
   }
   async function refresh(entry,key,nav){
     const state=await api('/api/mailbox/list-revision?unified='+entry.query.unified,{accountId:entry.owner});
+    if(!live(key,nav))return false;
     entry.checked=Date.now();
     if(JSON.stringify(state.revision)===JSON.stringify(entry.data.revision))return false;
     for(const candidate of entries.values())if(candidate.owner===entry.owner || candidate.query.unified){candidate.invalid=true;candidate.reading=null;}
-    if(live(key,nav))await refreshWindow(entry,key,nav);
+    await refreshWindow(entry,key,nav);
     return true;
   }
   async function refreshWindow(entry,key,nav,fromPaging=false){
-    if(entry.paging && !fromPaging){entry.refreshAfterPage=true;return;}
+    if(entry.paging && !fromPaging){entry.refreshAfterPage=nav;return;}
     if(entry.refreshing)return entry.refreshing;
     entry.refreshing=(async()=>{
       const indices=[...entry.pages.keys()].sort((a,b)=>a-b);
@@ -31518,7 +31530,8 @@ document.addEventListener('keydown', event => {
       });
       if(!live(key,nav))return;
       const list=document.getElementById('email-list'),bounds=list.getBoundingClientRect();
-      const anchor=[...list.querySelectorAll('.email-item')].find(node=>node.getBoundingClientRect().bottom>bounds.top);
+      const keepAnchor=list.scrollTop>0 || first>0 || entry.anchor;
+      const anchor=keepAnchor ? [...list.querySelectorAll('.email-item')].find(node=>node.getBoundingClientRect().bottom>bounds.top) : null;
       const anchorKey=anchor?`${anchor.dataset.accountId || ''}:${anchor.dataset.id}`:'',top=anchor?.getBoundingClientRect().top;
       entry.pages=pages;entry.cursors=cursors;entry.data=data;entry.invalid=false;entry.checked=Date.now();
       paint(entry);
@@ -31537,11 +31550,11 @@ document.addEventListener('keydown', event => {
     const list=document.getElementById('email-list'),anchor=[...list.querySelectorAll('.email-item')].find(node=>node.getBoundingClientRect().bottom>list.getBoundingClientRect().top);
     const anchorKey=anchor?`${anchor.dataset.accountId || ''}:${anchor.dataset.id}`:'',top=anchor?.getBoundingClientRect().top;
     try{
-      if(action==='first'){entry.anchor=0;await load({silent:true,force:true});list.scrollTop=0;return;}
-      await fetchPage(entry,index,entry.cursors.get(index),undefined);
+      if(action==='first'){await load({silent:true,force:true,fromStart:true});return;}
+      await fetchPage(entry,index,entry.cursors.get(index),nav);
+      if(!live(key,nav))return;
       while(entry.pages.size>WINDOW_PAGES){const keys=[...entry.pages.keys()].sort((a,b)=>a-b);entry.pages.delete(action==='previous'?keys.at(-1):keys[0]);}
       if(entry.cursors.size>512)entry.cursors.delete([...entry.cursors.keys()].sort((a,b)=>a-b)[1]);
-      if(!live(key,nav))return;
       mailRenderLimit=rowsOf(entry).length;paint(entry);
       const retained=[...list.querySelectorAll('.email-item')].find(node=>`${node.dataset.accountId || ''}:${node.dataset.id}`===anchorKey);
       if(retained && top!==undefined)list.scrollTop+=retained.getBoundingClientRect().top-top;
@@ -31556,7 +31569,9 @@ document.addEventListener('keydown', event => {
       else {entry.error=true;paint(entry);toast(mailaiText('继续加载失败，点击重试'),'warn');}
     }finally{
       entry.paging=false;buttons.forEach(node=>{if(node.isConnected)node.disabled=false;});
-      if(entry.refreshAfterPage && live(key,nav)){entry.refreshAfterPage=false;void refresh(entry,key,nav).catch(()=>{});}
+      const refreshNav=entry.refreshAfterPage;
+      entry.refreshAfterPage=null;
+      if(refreshNav!=null && live(key,refreshNav))void refresh(entry,key,refreshNav).catch(()=>{});
     }
   }
   function filterChanged(){
