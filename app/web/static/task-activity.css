@@ -16,7 +16,7 @@
 
 #btn-task-center .task-sync-indicator {
   display:inline-flex; align-items:center; gap:4px;
-  color:var(--desk-muted,var(--muted)); font-size:10px; font-style:normal; white-space:nowrap;
+  color:inherit; font-size:10px; font-style:normal; white-space:nowrap;
 }
 #btn-task-center .task-sync-indicator::before {
   content:""; inline-size:5px; block-size:5px; border-radius:50%; background:var(--desk-accent,var(--primary));

@@ -62,7 +62,7 @@ npm ci --ignore-scripts --no-audit --no-fund
 .venv-build/bin/python scripts/prepare_bundle_config.py "$@"
 zsh scripts/prepare_macos_icon.command
 .venv-build/bin/pyinstaller --noconfirm --clean MailAI.spec
-lipo -verify_arch "$build_arch" dist/MailAI.app/Contents/MacOS/MailAI
+test "$(lipo -archs dist/MailAI.app/Contents/MacOS/MailAI)" = "$build_arch"
 .venv-build/bin/python scripts/smoke_macos_app.py dist/MailAI.app
 rm -f mailai.defaults.env
 
