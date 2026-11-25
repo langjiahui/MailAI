@@ -5,9 +5,9 @@ MailAI 是一款**本地优先（Local-First）、AI 驱动**的开源跨平台�
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v4.9.0**
+当前版本：**v4.9.1**
 
-本次更新：新增 Intel Mac 原生安装包和架构匹配更新。大量邮件在后台同步，可先阅读已下载的邮件，并在「任务与发件箱」查看进度、暂停或继续。[发布说明](https://github.com/langjiahui/MailAI/blob/v4.9.0/docs/%E5%8F%91%E5%B8%83-v4.9.0-Intel-Mac%E4%B8%8E%E5%90%8E%E5%8F%B0%E5%90%8C%E6%AD%A5.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
+本次更新：统一「模型用量统计」弹窗布局、语义化表格与主题样式并保留刷新时的滚动和焦点状态，修复 macOS 打包二进制 SDK 版本头以保留原生窗口控件显示。[发布说明](docs/发布-v4.9.1-用量弹窗对齐与macOS窗口SDK修复.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
 
 ---
 

@@ -4,6 +4,8 @@ import os
 import hashlib
 from pathlib import Path
 
+from PyInstaller.utils import osx as osxutils
+
 
 release_version = os.environ.get('MAILAI_RELEASE_VERSION', '1.0.12')
 build_version = os.environ.get('MAILAI_BUILD_VERSION', '1')
@@ -44,6 +46,17 @@ exe = EXE(
     entitlements_file=None,
     icon=[macos_icon],
 )
+
+# PyInstaller caps the launcher's SDK at Python's SDK for Tk compatibility.
+# MailAI uses AppKit via PyObjC. Preserve the SDK linked by the bootloader so
+# macOS can select its native window controls without raising the deployment target.
+bootloader_sdk = osxutils.get_macos_sdk_version(exe.exefiles[0][1])
+if bootloader_sdk < (26, 0, 0):
+    raise SystemExit('MailAI requires a PyInstaller bootloader linked with macOS SDK 26 or newer.')
+if osxutils.get_macos_sdk_version(exe.name) != bootloader_sdk:
+    osxutils.set_macos_sdk_version(exe.name, *bootloader_sdk)
+    osxutils.sign_binary(exe.name, exe.codesign_identity, exe.entitlements_file)
+
 coll = COLLECT(
     exe,
     a.binaries,
