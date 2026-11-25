@@ -16,7 +16,8 @@
       node.classList.toggle('task-activity-running', Boolean(state?.active));
       if (node.id !== 'btn-task-center') continue;
       const label = mailaiT('task.title') || '任务与发件箱';
-      const details = [sync.running ? mailaiText('同步中') : '',
+      const syncing = sync.running && !sync.canceled;
+      const details = [syncing ? mailaiText('同步中') : '',
         state?.active ? mailaiTemplate`${state.active} 项进行中` : '',
         attention ? mailaiTemplate`${attention} 项需处理` : '', state?.unknown ? mailaiText('状态待确认') : ''].filter(Boolean);
       node.title = [label, ...details].join(' · ');
@@ -24,7 +25,7 @@
       const badge = node.querySelector('[data-task-count]');
       if (badge) { badge.textContent = attention; badge.hidden = !attention; }
       const indicator = node.querySelector('[data-task-sync-indicator]');
-      if (indicator) indicator.hidden = !sync.running || sync.canceled;
+      if (indicator) indicator.hidden = !syncing || attention > 0;
     }
   }
   function update(accountId, state) {

@@ -11,6 +11,32 @@ const engine = process.env.MAILAI_BROWSER === 'webkit' ? webkit : chromium;
   await page.locator('#app-preloader').waitFor({state:'detached'});
   const accountId=await page.evaluate(()=>activeMailAccount().id);
   assert(await page.evaluate(()=>_systemConfig.accounts.every(row=>row.user.endsWith('@example.test'))));
+  for (const width of [1512, 900]) {
+   await page.setViewportSize({width,height:1000});
+   const toolbar = await page.evaluate(accountId => {
+    const activity = window.mailaiTaskActivity;
+    const previous = activity.syncState(accountId) || {};
+    const entry = document.getElementById('btn-task-center');
+    const refresh = document.getElementById('btn-poll');
+    const icon = entry.querySelector('svg');
+    const dot = entry.querySelector('[data-task-sync-indicator]');
+    const measure = () => [entry, refresh, icon].map(node => node.getBoundingClientRect().toJSON());
+    activity.setSync(accountId, {});
+    const idle = measure();
+    activity.setSync(accountId, {running:true, operation:'sync_folders'});
+    const running = measure();
+    const bounds = dot.getBoundingClientRect();
+    const contained = bounds.width > 0 && bounds.left >= running[0].left && bounds.right <= running[0].right &&
+      bounds.top >= running[0].top && bounds.bottom <= running[0].bottom;
+    const label = entry.getAttribute('aria-label');
+    activity.setSync(accountId, previous);
+    return {idle,running,contained,label};
+   }, accountId);
+   assert.deepEqual(toolbar.running, toolbar.idle, 'Synchronization must not move toolbar buttons or icons');
+   assert(toolbar.contained, 'Sync dot must stay inside the task button');
+   assert.match(toolbar.label, /同步中|Syncing/, 'Synchronization state remains available through the button label');
+  }
+  await page.setViewportSize({width:1440,height:1000});
   const read = token=>page.evaluate(async({token,accountId})=>(await api('/api/mail/outbox',{accountId})).find(row=>row.token===token),{token,accountId});
   async function queue(action) {
    return page.evaluate(async({action,accountId})=>{
