@@ -3031,9 +3031,9 @@ async function loadMailPages(path, isCurrent = () => true, maxRows = Number.POSI
   return null;
 }
 
-async function loadData({includeAncillary = true, silent = false, requireFresh = false} = {}) {
+async function loadData({includeAncillary = true, silent = false, requireFresh = false, fromStart = false} = {}) {
   if (typeof window !== 'undefined' && window.mailaiMailboxStore?.supports()) {
-    return window.mailaiMailboxStore.load({silent, requireFresh});
+    return window.mailaiMailboxStore.load({silent, requireFresh, fromStart});
   }
   const revision = ++mailLoadRevision;
   const navigationRevision = mailboxNavigationRevision;
@@ -3075,6 +3075,7 @@ async function loadData({includeAncillary = true, silent = false, requireFresh =
     updateSidebar();
     updateDomainFilter();
     applyFilters({silent});
+    if (fromStart) listNode.scrollTop = 0;
     // Mail remains readable even if the optional label catalogue is slow.
     void tagCatalog?.then(() => { if(isCurrent())applyFilters({silent:true}); });
     loadAssistantAlerts();
@@ -3284,8 +3285,9 @@ async function onNavClick(e) {
   // Reload before filtering its rows into the new mailbox.
   let loaded = true;
   if (changingMailbox) {
-    loaded = await loadData();
-    if (loaded === null && transitionRevision === mailboxNavigationRevision) loaded = await loadData();
+    const options = {fromStart: filter === 'status' && value === 'inbox'};
+    loaded = await loadData(options);
+    if (loaded === null && transitionRevision === mailboxNavigationRevision) loaded = await loadData(options);
   }
   if (transitionRevision && transitionRevision !== mailboxNavigationRevision) return;
   updateActiveNav();
@@ -5477,7 +5479,7 @@ function finishMailboxTransition(revision, {immediate = false} = {}) {
   }, remaining);
 }
 
-async function openAccountMailbox(accountId, mailbox) {
+async function openAccountMailbox(accountId, mailbox, {fromStart = false} = {}) {
   if (bulkOperationActive) return toast(mailaiText('批量操作正在执行，请稍候'), 'warn');
   const navigationRevision = ++mailboxNavigationRevision;
   beginMailboxTransition(navigationRevision, `${{get inbox() { return mailaiText('收件箱'); },get sent() { return mailaiText('已发送'); },get drafts() { return mailaiText('草稿箱'); },get favorites() { return mailaiText('我的收藏'); },get trash() { return mailaiText('已删除'); },get local_archive() { return mailaiText('本地归档'); }}[mailbox] || mailbox} · ${(_systemConfig?.accounts || []).find(item => item.id === accountId)?.user || ''}`);
@@ -5527,8 +5529,9 @@ async function openAccountMailbox(accountId, mailbox) {
   }
   // Observe folder failures immediately while the list can finish first.
   const foldersPromise = loadMailboxFolders().then(() => null, error => error);
-  let loaded = await loadData();
-  if (loaded === null && navigationRevision === mailboxNavigationRevision) loaded = await loadData();
+  const options = {fromStart};
+  let loaded = await loadData(options);
+  if (loaded === null && navigationRevision === mailboxNavigationRevision) loaded = await loadData(options);
   if (loaded !== true && navigationRevision === mailboxNavigationRevision) showMailboxLoadFailure();
   finishMailboxTransition(navigationRevision);
   const folderError = await foldersPromise;
@@ -5594,8 +5597,9 @@ async function openUnifiedInbox() {
   currentFilter.status = ''; currentFilter.verdict = ''; currentFilter.category = ''; currentFilter.mailTags = [];
   currentFilter.search = ''; searchResults = null; advanceMailSearchRevision(); clearTimeout(globalSearchTimer);
   document.getElementById('global-search').value = '';
-  let loaded = await loadData();
-  if (loaded === null && navigationRevision === mailboxNavigationRevision) loaded = await loadData();
+  const options = {fromStart: true};
+  let loaded = await loadData(options);
+  if (loaded === null && navigationRevision === mailboxNavigationRevision) loaded = await loadData(options);
   if (loaded !== true && navigationRevision === mailboxNavigationRevision) showMailboxLoadFailure();
   finishMailboxTransition(navigationRevision);
   if (navigationRevision !== mailboxNavigationRevision) return;
@@ -9712,7 +9716,7 @@ document.getElementById('account-mailbox-nav').addEventListener('click', event =
   if (!button) return;
   const action = button.dataset.accountAction;
   if (action === 'unified') openUnifiedInbox().catch(err => toast(mailaiText('加载所有收件箱失败：') + mailaiSystemMessage(err.message), 'error'));
-  else openAccountMailbox(button.dataset.accountId, action).catch(err => toast(mailaiText('打开邮箱失败：') + mailaiSystemMessage(err.message), 'error'));
+  else openAccountMailbox(button.dataset.accountId, action, {fromStart: action === 'inbox'}).catch(err => toast(mailaiText('打开邮箱失败：') + mailaiSystemMessage(err.message), 'error'));
 });
 document.getElementById('compose-from').addEventListener('change', async event => {
   const accountId = event.target.value;

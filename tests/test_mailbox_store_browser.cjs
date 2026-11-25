@@ -42,6 +42,37 @@ const engine=process.env.MAILAI_BROWSER==='webkit'?webkit:chromium;
   assert.equal(await page.evaluate(()=>selectedEmailId),selected,'Cached view lost its selected message');
   assert(await page.evaluate(()=>Boolean(selectedEmailDetail)),'Cached reading snapshot was not restored');
   assert(Math.abs(await page.locator('#email-list').evaluate(node=>node.scrollTop)-scroll)<3,'Cached view lost its scroll position');
+  const list=page.locator('#email-list');
+  const inbox=page.locator(`.sidebar-account-folders [data-account-action="inbox"][data-account-id="${work.id}"]`);
+  assert(await inbox.locator('em').isVisible(),'The inbox should show its unread badge');
+  const visibleMail=()=>list.evaluate(node=>{
+    const top=node.getBoundingClientRect().top;
+    const row=[...node.querySelectorAll('.email-item')].find(item=>item.getBoundingClientRect().bottom>top);
+    return {id:row.dataset.id,offset:row.getBoundingClientRect().top-top};
+  });
+  const beforeArrival=await visibleMail();
+  const newSubject='New unread mail while browsing history';
+  const firstInboxPage=url=>{
+    if(url.pathname!=='/api/mailbox/list' || url.searchParams.get('refresh')!=='true' || url.searchParams.get('cursor'))return false;
+    const filters=JSON.parse(url.searchParams.get('filters'));
+    return filters.status==='inbox' && !filters.unified;
+  };
+  await page.route(firstInboxPage,async route=>{
+    const response=await route.fetch();
+    const data=await response.json();
+    data.items=[{...data.items[0],id:95001,subject:newSubject,date:new Date(Date.now()+60000).toISOString(),is_read:false},...data.items.slice(0,-1)];
+    await route.fulfill({response,json:data});
+  },{times:1});
+  await page.evaluate(()=>mailaiMailboxStore.heartbeat(true));
+  const afterArrival=await visibleMail();
+  assert.equal(afterArrival.id,beforeArrival.id,'New mail displaced the message being browsed');
+  assert(Math.abs(afterArrival.offset-beforeArrival.offset)<3,'New mail moved the visible message');
+  const requestsBeforeClick=requests;
+  await inbox.click();
+  await page.waitForFunction(()=>document.getElementById('email-list').scrollTop===0);
+  assert.match(await list.locator('.email-item.unread').first().textContent(),/New unread mail while browsing history/);
+  assert.equal(requests,requestsBeforeClick,'A saved first page should be immediate');
+  await page.evaluate(()=>mailaiMailboxStore.heartbeat(true));
   // A matching historical row lies beyond the first 25 pages, not in allEmails.
   await page.evaluate(async()=>{currentFilter.mailTags=['Historical label'];await loadData();});
   assert.equal(await page.locator('#email-list .email-item').count(),1);
@@ -65,8 +96,22 @@ const engine=process.env.MAILAI_BROWSER==='webkit'?webkit:chromium;
   // New read state invalidates the version, but refresh preserves the old window.
   await page.evaluate(async()=>{await api('/api/emails/'+allEmails[0].id+'/read',{method:'POST'});await mailaiMailboxStore.heartbeat(true);});
   assert.equal(await page.evaluate(()=>allEmails[0].id),oldFirst,'Background refresh jumped to the newest page');
-  await page.locator('[data-mail-page="first"]').click();
+  await inbox.click();
   await page.waitForFunction(()=>allEmails.length===200 && !document.querySelector('[data-mail-page="previous"]'));
+  assert.equal(await list.evaluate(node=>node.scrollTop),0,'Inbox click did not rewind the historical window');
+  await page.evaluate(id=>mailaiMailboxStore.reveal(id),oldFirst);
+  await page.locator('[data-mail-page="first"]').click();
+  await page.waitForFunction(()=>!document.querySelector('[data-mail-page="first"]'));
+  assert.equal(await list.evaluate(node=>node.scrollTop),0,'The anchored view must still be able to return to the beginning');
+  const unifiedInbox=page.locator('[data-account-action="unified"]');
+  await unifiedInbox.click();
+  await overlay.waitFor({state:'hidden'});
+  await list.evaluate(node=>node.scrollTop=1200);
+  assert(await list.evaluate(node=>node.scrollTop)>0);
+  await unifiedInbox.click();
+  await page.waitForFunction(()=>document.getElementById('email-list').scrollTop===0);
+  await inbox.click();
+  await overlay.waitFor({state:'hidden'});
   // Coalesce the same request and discard a late response after an account switch.
   let release;const held=new Promise(resolve=>release=resolve);let blocking=true;
   await page.route('**/api/mailbox/list?*',async route=>{
@@ -89,7 +134,18 @@ const engine=process.env.MAILAI_BROWSER==='webkit'?webkit:chromium;
   await page.unroute('**/api/mailbox/list?*');
   await page.locator('[data-mailbox-retry]').click();
   await page.waitForFunction(()=>document.querySelectorAll('#email-list .email-item').length===1);
+  await page.evaluate(()=>{
+    _systemConfig.accounts=_systemConfig.accounts.filter(account=>account.id===activeMailAccount()?.id);
+    renderSidebarAccounts();
+  });
+  const compactInbox=page.locator('#folder-nav [data-value="inbox"]');
+  await compactInbox.click();
+  await overlay.waitFor({state:'hidden'});
+  await list.evaluate(node=>node.scrollTop=1200);
+  assert(await list.evaluate(node=>node.scrollTop)>0);
+  await compactInbox.click();
+  await page.waitForFunction(()=>document.getElementById('email-list').scrollTop===0);
   assert.deepEqual(errors,[]);
-  console.log('PASS first-page independence, 5k history facets, account-safe cache/scroll, bounded paging, refresh anchors, late responses and failure recovery');
+  console.log('PASS first-page independence, 5k history facets, cached reading position, new mail anchoring, Inbox returns to top, bounded paging and failure recovery');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exit(1);});
