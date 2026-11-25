@@ -100,10 +100,13 @@ fixture.stderr.on('data', chunk => { log += chunk; });
     await page.fill('#compose-message', '您好，2026年11月14日（周三）核对，请查收 {{姓名}}。');
     let outboxRequested = false;
     await page.route('**/api/mail/outbox', async route => {
+      if (route.request().method() !== 'POST') return route.fallback();
       outboxRequested = true;
       await route.fulfill({ contentType: 'application/json', body: JSON.stringify({ id: 99, status: 'queued' }) });
     });
-    const outboxResp = page.waitForResponse('**/api/mail/outbox');
+    // The toolbar also reads the outbox in the background.
+    const outboxResp = page.waitForResponse(response =>
+      new URL(response.url()).pathname === '/api/mail/outbox' && response.request().method() === 'POST');
     await page.click('#btn-send-mail');
     await outboxResp;
     assert.equal(outboxRequested, true);
