@@ -553,8 +553,8 @@ html[data-theme] body .list-sort #btn-filter-panel:hover, html[data-theme] body 
 html[data-theme] body .productivity-dialog { width:min(760px,calc(100vw - 32px)); background:var(--desk-surface,#fff)!important; color:var(--desk-ink,#24372f)!important; border:1px solid var(--desk-line,#dce5e0); border-radius:14px; backdrop-filter:none; font-size:14px; }
 html[data-theme] body .productivity-dialog>header { background:var(--desk-surface,#fff)!important; padding:18px 22px; border-color:var(--desk-line); }
 .productivity-dialog h2 { font-size:19px; }
-.productivity-dialog [data-close-productivity] { width:32px; height:32px; padding:0; border:0; background:transparent; color:var(--desk-muted); font-size:21px; }
-.productivity-body { padding:18px 22px 22px; }
+.productivity-dialog :is([data-close-productivity],[data-close-model-usage]) { width:32px; height:32px; padding:0; border:0; background:transparent; color:var(--desk-muted); font-size:21px; }
+:is(.productivity-body,.usage-dialog-body) { padding:18px 22px 22px; }
 .productivity-body>[data-account-label] { margin:0 0 16px; }
 .productivity-lead { font-weight:650; margin:16px 0 5px; }
 .productivity-hint,.productivity-help { color:var(--desk-muted); }
@@ -615,7 +615,7 @@ html[data-theme] body .compose-card.productivity-expanded>header { padding:14px 
  html[data-theme] body .compose-modal:has(>.productivity-expanded)>.compose-ai-panel { inset:80px 24px 84px!important; width:auto!important; height:auto!important; box-shadow:0 14px 40px #0002; border:1px solid var(--desk-line); border-radius:12px; }
 }
 @media(max-width:600px) {
- .productivity-body { padding:16px; }
+ :is(.productivity-body,.usage-dialog-body) { padding:16px; }
  .productivity-choice-cards,.productivity-polish-columns { grid-template-columns:1fr; }
  .productivity-dialog .productivity-grid { grid-template-columns:1fr; }
  .productivity-search-line { flex-wrap:wrap; }

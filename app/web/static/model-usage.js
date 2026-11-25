@@ -6,8 +6,8 @@
   dialog.id = 'model-usage-dialog';
   dialog.setAttribute('aria-labelledby', 'model-usage-title');
   dialog.className = 'productivity-dialog';
-  dialog.innerHTML = `<header><div><h2 id="model-usage-title" tabindex="-1" autofocus><span data-i18n="ui.ab149d081faa">MailAI 用量统计</span></h2><small><span data-i18n="ui.dd3ee0b1ba86">仅统计本机 MailAI 的模型调用，不代表订阅额度或账单</span></small></div><button type="button" data-close-productivity aria-label="关闭" data-i18n-aria="ui.3fd47edce45b">×</button></header>
-    <div class="productivity-body">
+  dialog.innerHTML = `<header><div><h2 id="model-usage-title" tabindex="-1" autofocus><span data-i18n="ui.ab149d081faa">MailAI 用量统计</span></h2><small><span data-i18n="ui.dd3ee0b1ba86">仅统计本机 MailAI 的模型调用，不代表订阅额度或账单</span></small></div><button type="button" data-close-model-usage aria-label="关闭" data-i18n-aria="ui.3fd47edce45b">×</button></header>
+    <div class="usage-dialog-body">
     <div class="usage-filters"><label><span data-i18n="ui.8b6ff498515b">时间</span> <select id="usage-period"><option value="all" data-i18n="ui.5c55a67935af">全部</option><option value="today" data-i18n="ui.5c9cf5e0dd47">今日</option><option value="month" data-i18n="ui.0eeecd26f2ba">本月</option></select></label><label><span data-i18n="ui.73075237fd0f">邮箱</span> <select id="usage-account"><option value="" data-i18n="ui.9179a1b086c0">全部邮箱</option></select></label></div>
     <div id="usage-body" aria-live="polite"></div><footer><span data-i18n="ui.9a6703ae6ba8">调用结束后更新 · 仅保存用量元数据，不保存正文或密钥 · 启用前的历史用量无法补算</span></footer></div>`;
   document.body.append(dialog);
@@ -57,7 +57,7 @@
     }
   }
   trigger.onclick = event => { event.preventDefault(); event.stopPropagation(); dialog.showModal(); generation++; refresh(); };
-  dialog.querySelector('[data-close-productivity]').onclick = () => dialog.close();
+  dialog.querySelector('[data-close-model-usage]').onclick = () => dialog.close();
   dialog.addEventListener('close', () => trigger.focus());
   dialog.querySelectorAll('select').forEach(select => select.onchange = () => { generation++; refresh(); });
   document.addEventListener('visibilitychange', refresh);
