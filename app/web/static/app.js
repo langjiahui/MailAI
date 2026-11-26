@@ -3876,7 +3876,7 @@ function renderEmailItem(e, idx = 0) {
 // ===== 阅读区 =====
 function renderMailOutputButtons(reference) {
   const attributes = reference
-    ? `class="action-btn compact" data-mail-output-id="${Number(reference.id)}" data-mail-output-source="${reference.source === 'sent' ? 'sent' : 'email'}" data-mail-output-account="${esc(reference.accountId || '')}"`
+    ? `data-mail-output-id="${Number(reference.id)}" data-mail-output-source="${reference.source === 'sent' ? 'sent' : 'email'}" data-mail-output-account="${esc(reference.accountId || '')}"`
     : '';
   return `<button type="button" data-mail-output="print" ${attributes}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 8V3h10v5M7 17H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-3M17 11h.01"/><path class="hover-icon-part" d="M7 14h10v7H7z"/></svg>
@@ -3885,6 +3885,17 @@ function renderMailOutputButtons(reference) {
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m9 10 6-4M9 14l6 4"/></svg>
       <span data-i18n="mailOutput.share">${esc(mailaiText('分享邮件'))}</span>
     </button>`;
+}
+
+function renderReadingMoreActions(actions) {
+  return `<details class="reading-more-actions">
+    <summary aria-label="更多邮件操作" data-i18n-aria="ui.e8ee3628b5cc">
+      <svg class="reading-more-symbol" viewBox="0 0 20 20" aria-hidden="true"><g stroke-width="3"><path d="M4 10h.01"/><path d="M10 10h.01"/><path d="M16 10h.01"/></g></svg>
+      <span><span data-i18n="ui.38844b135cf7">更多</span></span>
+      <svg class="reading-more-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
+    </summary>
+    <div class="reading-more-panel">${actions}</div>
+  </details>`;
 }
 
 async function cancelSentOutboxItem(token, button = null) {
@@ -3962,13 +3973,20 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
     }).join(', ');
   };
   const recipientMeta = [
-    [kind === 'drafts' ? mailaiText('收件人') : mailaiText('发送至'), displayRecipientField(row.to_addr) || mailaiText('尚未填写')],
-    [mailaiText('抄送'), displayRecipientField(row.cc_addr)],
-    [mailaiText('密送'), displayRecipientField(row.bcc_addr)],
-  ].filter(([, value]) => value).map(([label, value]) => `<div class="special-mail-meta-row"><dt>${esc(label)}</dt><dd>${esc(value)}</dd></div>`).join('');
+    [kind === 'drafts' ? 'compose.to' : 'ui.f482cb6fc793', row.to_addr],
+    ['compose.cc', row.cc_addr],
+    ['compose.bcc', row.bcc_addr],
+  ].filter(([, address], index) => index === 0 || address).map(([key, address]) => {
+    const label = mailaiT(key) || MAILAI_I18N_CHINESE[key] || MAILAI_UI_COPY[key][0];
+    const value = displayRecipientField(address);
+    const recipient = value ? esc(value) : `<span data-i18n="ui.1c64182187de">${esc(mailaiText('尚未填写'))}</span>`;
+    return `<div class="special-mail-meta-row"><dt data-i18n="${key}">${esc(label)}</dt><dd>${recipient}</dd></div>`;
+  }).join('');
   const failed = kind === 'sent' && row.status === 'failed';
   const isOutboxQueued = Boolean(kind === 'sent' && row._outbox && row.status === 'queued');
-  const originLabel = row._remote ? (kind === 'drafts' ? mailaiText('服务器草稿') : mailaiText('服务器已发送邮件'))
+  const canOutput = kind === 'sent' && !row._outbox;
+  const canEditSent = canOutput && (row._remote || ['sent', 'accepted'].includes(row.status));
+  const originLabel = () => row._remote ? (kind === 'drafts' ? mailaiText('服务器草稿') : mailaiText('服务器已发送邮件'))
     : (kind === 'drafts' ? mailaiText('本地草稿')
       : isOutboxQueued ? (row.scheduled ? `${mailaiText('定时发送')}${row.due_at ? ' · ' + fmtDate(row.due_at) : ''}` : mailaiText('等待发送'))
       : failed ? mailaiText('发送失败')
@@ -3990,31 +4008,39 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
     : isOutboxQueued
       ? `<button type="button" class="action-btn action-primary compact" id="btn-cancel-outbox-special"><span data-i18n="ui.dd8e7a3dcc88">${esc(mailaiText('撤销发送'))}</span></button>${row.draft_id ? `<button type="button" class="action-btn compact" id="btn-edit-outbox-special"><span data-i18n="ui.51726c4a26ab">${esc(mailaiText('编辑邮件'))}</span></button>` : ''}`
       : failed ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><svg viewBox=\"0 0 20 20\"><path d=\"m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5Z\"/></svg><span data-i18n=\"ui.1532ca4d4634\">重新编辑</span></button>"
-      : (!row._outbox && (row._remote || ['sent','accepted'].includes(row.status))) ? "<button class=\"action-btn action-primary compact\" id=\"btn-edit-special\"><span data-i18n=\"ui.6b10f1cab097\">再次编辑</span></button>"
+      : canEditSent ? `<button type="button" class="action-btn action-primary compact" id="btn-edit-special"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m4 14.5-.5 2 2-.5L15 6.5 13.5 5 4 14.5ZM12 6.5l1.5 1.5"/></svg><span data-i18n="ui.6b10f1cab097">再次编辑</span></button>`
       : '';
-  pane.innerHTML = `<div class="special-mail-detail">
+  const moreActions = canOutput ? renderReadingMoreActions(`<div class="reading-secondary-actions">${renderMailOutputButtons({
+    id:row._remote ? row.remote_email_id : row.id,
+    source:row._remote ? 'email' : 'sent', accountId:activeMailAccount()?.id,
+  })}</div>${canEditSent ? `<div class="reading-secondary-actions"><button type="button" class="special-delete">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l1 15h10l1-15M10 10v7M14 10v7"/><path d="M4 6h16M9 6V3h6v3"/></svg>
+    <span data-i18n="ui.2f9d72d5133f">删除邮件</span></button></div>` : ''}`) : '';
+  const actionBar = `<div class="special-mail-actions">${specialActionButtons}${moreActions}</div>`;
+  const date = row.sent_at || row.updated_at || row.created_at;
+  pane.innerHTML = `<div class="special-mail-detail" data-mailbox="${kind}">
     <header class="special-mail-header">
       <div class="special-mail-toolbar">
-        <span class="eyebrow">${esc(originLabel)}</span>
-    <div class="special-mail-actions">${specialActionButtons}${kind === 'sent' && !row._outbox ? renderMailOutputButtons({
-      id:row._remote ? row.remote_email_id : row.id,
-      source:row._remote ? 'email' : 'sent', accountId:activeMailAccount()?.id,
-    }) : ''}</div>
+        <span class="eyebrow">${esc(originLabel())}</span>
+        ${kind === 'drafts' ? actionBar : ''}
       </div>
       <h1>${esc(String(row.subject ?? '').trim() || mailaiText('（无主题）'))}</h1>
-      <dl class="special-mail-meta">${recipientMeta}<div class="special-mail-meta-row"><dt><span data-i18n="ui.2bfff9580494">时间：</span></dt><dd>${esc(fmtDate(row.sent_at || row.updated_at || row.created_at))}</dd></div></dl>
+      <dl class="special-mail-meta">${recipientMeta}<div class="special-mail-meta-row"><dt data-i18n="read.timeShort">时间</dt><dd class="special-mail-date">${esc(fmtDate(date))}</dd></div></dl>
+      ${kind === 'sent' ? actionBar : ''}
     </header>
     ${failed ? `<div class="special-mail-error"><b><span data-i18n="ui.48ef62f16b21">失败原因：</span></b>${esc(mailaiSystemMessage(row.error) || mailaiText('未知错误'))}</div>` : ''}
     ${!failed && row.error ? `<div class="special-mail-error" role="status"><b data-i18n="send.warning">${esc(mailaiText('发送提示'))}：</b>${esc(mailaiSystemMessage(row.error))}</div>` : ''}
     ${specialAttachments}
     <article class="special-mail-body" id="special-mail-body"></article>
   </div>`;
+  mailaiBindUI(pane.querySelector('.special-mail-toolbar .eyebrow'), 'textContent', originLabel);
+  mailaiBindUI(pane.querySelector('.special-mail-date'), 'textContent', () => fmtDate(date));
   const bodyHost = document.getElementById('special-mail-body');
   if (row.body_html) {
     const frame = document.createElement('iframe');
     frame.className = 'rich-email-frame';
     frame.setAttribute('sandbox', 'allow-same-origin allow-top-navigation-to-custom-protocols');
-    mailaiBindUI(frame, "@title", () => (originLabel + mailaiText('正文')));
+    mailaiBindUI(frame, "@title", () => (originLabel() + mailaiText('正文')));
     frame.setAttribute('scrolling', 'no');
     autoSizeRichEmailFrame(frame);
     frame.srcdoc = richEmailDocument(row.body_html, true);
@@ -4022,6 +4048,8 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
   } else {
     mailaiBindUI(bodyHost, "textContent", () => (row.body_text || mailaiText('暂无正文')));
   }
+  const more = pane.querySelector('.reading-more-actions');
+  if (more) more.ontoggle = () => { if (more.open) requestAnimationFrame(() => positionReadingMorePanel(more)); };
   document.getElementById('btn-cancel-outbox-special')?.addEventListener('click', event => {
     void cancelSentOutboxItem(row.outbox_token, event.currentTarget);
   });
@@ -4085,12 +4113,12 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
       toast(row._remote ? mailaiText('服务器草稿已移入垃圾箱') : mailaiText('草稿已舍弃'), 'success');
     } catch (err) { toast(mailaiText('舍弃草稿失败：') + mailaiSystemMessage(err.message), 'error'); }
   });
-  if (kind === 'sent' && !row._outbox && !row._remote && ['sent', 'accepted'].includes(row.status) && row.message_id) {
-    const actionsHost = document.querySelector('.special-mail-actions');
+  if (canEditSent && !row._remote && row.message_id) {
     const accountId = activeMailAccount()?.id;
     const nudgeBtn = document.createElement('button');
     nudgeBtn.type = 'button'; nudgeBtn.className = 'action-btn compact'; nudgeBtn.id = 'btn-sent-ai-followup';
-    mailaiBindUI(nudgeBtn, 'textContent', () => mailaiText('AI 催办'));
+    nudgeBtn.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 4h10a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H8l-4 2.5V15a2 2 0 0 1-1-2V6a2 2 0 0 1 2-2Z"/><path d="M7 8h6m-6 3h4"/></svg><span></span>`;
+    mailaiBindUI(nudgeBtn.querySelector('span'), 'textContent', () => mailaiText('AI 催办'));
     nudgeBtn.onclick = async () => {
       if (nudgeBtn.disabled) return;
       nudgeBtn.disabled = true;
@@ -4100,7 +4128,8 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
     };
     const scheduleBtn = document.createElement('button');
     scheduleBtn.type = 'button'; scheduleBtn.className = 'action-btn compact'; scheduleBtn.id = 'btn-sent-schedule-followup';
-    mailaiBindUI(scheduleBtn, 'textContent', () => mailaiText('安排跟进'));
+    scheduleBtn.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 1.5"/></svg><span></span>`;
+    mailaiBindUI(scheduleBtn.querySelector('span'), 'textContent', () => mailaiText('安排跟进'));
     scheduleBtn.onclick = async () => {
       if (scheduleBtn.disabled) return;
       scheduleBtn.disabled = true;
@@ -4111,16 +4140,15 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
       } catch (err) { toast(mailaiSystemMessage(err.message), 'error'); }
       finally { scheduleBtn.disabled = false; }
     };
-    actionsHost.append(nudgeBtn, scheduleBtn);
+    more.before(nudgeBtn, scheduleBtn);
   }
-  if (kind === 'sent' && !row._outbox && (row._remote || ['sent','accepted'].includes(row.status))) {
-    const button = document.createElement('button');
-    button.type = 'button'; button.className = 'action-btn compact special-delete';
-    mailaiBindUI(button, "textContent", () => (mailaiText('删除邮件')));
-    document.querySelector('.special-mail-actions').appendChild(button);
+  const button = more?.querySelector('.special-delete');
+  if (button) {
     const accountId = activeMailAccount()?.id;
     button.onclick = async () => {
       if (button.disabled) return;
+      more.open = false;
+      more.querySelector('summary').focus({preventScroll:true});
       button.disabled = true;
       try {
         const result = await api('/api/mail/sent/' + row.id, {accountId, method:'DELETE'});
@@ -6920,14 +6948,7 @@ function renderReadingPane(e) {
           <section class="reading-action-group reading-mail-group" aria-label="邮件操作" data-i18n-aria="ui.15ecc4e1adf5"><span class="reading-action-group-title">${mailaiT('read.groupMail') || '邮件操作'}</span><div class="reading-mail-controls"><div class="reading-reply-actions">${replyActions}</div></div></section>
           <section class="reading-action-group reading-ai-group" aria-label="AI 助手" data-i18n-aria="ui.1b0049fcfd41"><span class="reading-action-group-title">${mailaiT('read.groupAi') || 'AI 助手'}</span></section>
           ${mailSummaryToolbarButton(e)}
-          <details class="reading-more-actions">
-            <summary aria-label="更多邮件操作" data-i18n-aria="ui.e8ee3628b5cc">
-              <svg class="reading-more-symbol" viewBox="0 0 20 20" aria-hidden="true"><g stroke-width="3"><path d="M4 10h.01"/><path d="M10 10h.01"/><path d="M16 10h.01"/></g></svg>
-              <span><span data-i18n="ui.38844b135cf7">更多</span></span>
-              <svg class="reading-more-chevron" viewBox="0 0 20 20" aria-hidden="true"><path d="m5.5 7.5 4.5 4.5 4.5-4.5"/></svg>
-            </summary>
-            <div class="reading-more-panel">${decisionGroup}</div>
-          </details>
+          ${renderReadingMoreActions(decisionGroup)}
         </div>
       </div>
     </div>

@@ -21,10 +21,10 @@ html[data-theme] body .special-mail-actions .action-btn {
 html[data-theme] body .special-mail-actions #btn-edit-special {
   color:var(--desk-accent); background:var(--desk-selected); border-color:var(--desk-accent);
 }
-html[data-theme] body #reading-content .special-mail-actions :is(#btn-delete-special,.special-delete) { color:#bf3b35; }
-html[data-theme="dark"] body #reading-content .special-mail-actions :is(#btn-delete-special,.special-delete) { color:#ffaaa3; }
+html[data-theme] body #reading-content .special-mail-actions #btn-delete-special { color:#bf3b35; }
+html[data-theme="dark"] body #reading-content .special-mail-actions #btn-delete-special { color:#ffaaa3; }
 html[data-theme] body .special-mail-actions .action-btn:hover { background:var(--desk-hover); transform:none; }
-html[data-theme] body #reading-content .special-mail-actions :is(#btn-delete-special,.special-delete):hover { background:rgba(191,59,53,.1); }
+html[data-theme] body #reading-content .special-mail-actions #btn-delete-special:hover { background:rgba(191,59,53,.1); }
 .special-mail-actions .action-btn svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
 html[data-theme] body .special-mail-detail .special-mail-body {
   min-width:0; width:100%; min-height:180px; margin:22px 0 0; padding:0;
@@ -111,6 +111,28 @@ html[data-theme] body .special-mail-detail .rich-email-frame { border:0!importan
 #reading-content .special-mail-detail .attachment-row>.attachment-save-action:hover {
   background:var(--desk-hover)!important; color:var(--desk-accent)!important;
 }
-#reading-content .special-mail-detail :is(a,button):focus-visible {
+#reading-content .special-mail-detail :is(a,button,summary):where(:not(.reading-more-panel *)):focus-visible {
   outline:2px solid var(--desk-accent)!important; outline-offset:3px;
+}
+
+.special-mail-detail[data-mailbox="sent"] .special-mail-header { padding-bottom:15px; }
+.special-mail-detail[data-mailbox="sent"] h1 { margin:8px 0 12px; }
+html[data-theme] body .special-mail-detail[data-mailbox="sent"] .special-mail-meta { gap:4px; }
+.special-mail-detail[data-mailbox="sent"] .special-mail-actions { gap:6px; margin:14px 0 0; }
+#reading-content .special-mail-detail[data-mailbox="sent"] .special-mail-actions :is(.action-btn,summary) {
+  box-sizing:border-box; min-height:34px; padding:0 10px; border-radius:10px;
+}
+#reading-content .special-mail-actions .reading-more-actions>summary {
+  border-color:transparent!important; background:transparent!important;
+  color:var(--desk-ink)!important; box-shadow:none!important;
+}
+#reading-content .special-mail-actions .reading-more-actions>summary:hover,
+#reading-content .special-mail-actions .reading-more-actions[open]>summary { background:var(--desk-hover)!important; }
+.special-mail-actions .reading-more-panel { inset-inline:0 auto; }
+html[data-theme] body .special-mail-detail[data-mailbox="sent"] .special-mail-attachments { margin-top:16px; }
+.special-mail-detail[data-mailbox="sent"] .special-mail-attachment-list:has(> :only-child) { max-inline-size:440px; }
+html[data-theme] body .special-mail-detail[data-mailbox="sent"] .special-mail-body { margin-top:18px; }
+
+@media(max-width:760px), (pointer:coarse) {
+  #reading-content .special-mail-detail[data-mailbox="sent"] .special-mail-actions :is(.action-btn,summary) { min-height:44px; }
 }

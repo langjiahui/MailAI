@@ -323,16 +323,37 @@ const {chromium,webkit} = require('playwright');
         };
         specialMailbox='sent';
         await selectSpecialMessage(remote?-99:42,{id:remote?-99:42,remote_email_id:remote?99:null,
-          _remote:remote,status:'sent',subject:'Synthetic sent output',to_addr:'reader@example.test',
+          _remote:remote,status:'sent',subject:'Synthetic sent output',to_addr:'reader@example.test',message_id:'<sent@example.test>',
           body_html:'<p>Outgoing message body</p>',attachments:[]});
       },remote);
-      await page.locator('.special-mail-actions [data-mail-output="share"]').click();
+      const toolbar=page.locator('.special-mail-actions');
+      const more=toolbar.locator('summary');
+      const share=toolbar.locator('[data-mail-output="share"]');
+      const recipientLabel=page.locator('.special-mail-meta dt').first();
+      await page.evaluate(()=>setI18nLanguage('en'));
+      assert.equal(await recipientLabel.innerText(),'Sent to');
+      await page.evaluate(()=>setI18nLanguage('zh-CN'));
+      assert.equal(await recipientLabel.innerText(),'发送至');
+      assert.equal(await toolbar.locator('#btn-sent-schedule-followup').count(),remote?0:1);
+      assert(await toolbar.locator('#btn-edit-special').isVisible());
+      assert(!(await share.isVisible()));
+      assert(!(await toolbar.locator('.special-delete').isVisible()));
+      await more.focus();
+      await page.keyboard.press('ArrowDown');
+      assert(await toolbar.locator('[data-mail-output="print"]').evaluate(button=>button===document.activeElement));
+      await page.keyboard.press('End');
+      assert(await toolbar.locator('.special-delete').evaluate(button=>button===document.activeElement));
+      await page.keyboard.press('Escape');
+      assert(!(await share.isVisible()));
+      await more.click();
+      await share.click();
       await page.waitForFunction(()=>!document.querySelector('#mail-output-format').disabled);
       const reference=await page.evaluate(()=>window.__sentOutputRef);
       assert.equal(reference.id,remote?99:42);
       assert.equal(reference.source,remote?'email':'sent');
       assert.equal(reference.account,outgoingAccount);
       await dialog.locator('[data-output-close]').click();
+      assert(await more.evaluate(summary=>summary===document.activeElement));
     }
 
     if(engine==='chromium') {
