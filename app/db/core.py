@@ -412,7 +412,7 @@ BEGIN DELETE FROM seen_sync_jobs WHERE email_id=OLD.id; END;
 
 
 @contextmanager
-def conn():
+def conn(*, notify=True):
     source_path = config.DB_PATH
     c = sqlite3.connect(source_path, timeout=15)
     c.row_factory = sqlite3.Row
@@ -422,13 +422,13 @@ def conn():
     try:
         yield c
         c.commit()
-        if c.total_changes:
+        if notify and c.total_changes:
             from ..energy_scheduler import database_changed
             database_changed()
     finally:
         changed = c.total_changes
         c.close()
-    if changed:
+    if notify and changed:
         from ..companion_growth import drain_outbox
         drain_outbox(source_path)
 
@@ -600,9 +600,15 @@ def _run_migrations(c):
     for table in ("drafts", "sent_messages"):
         if "attachments_json" not in _columns_of(c, table):
             c.execute(f"ALTER TABLE {table} ADD COLUMN attachments_json TEXT DEFAULT '[]'")
+        if 'writing_sample' not in _columns_of(c, table):
+            c.execute(f"ALTER TABLE {table} ADD COLUMN writing_sample TEXT NOT NULL DEFAULT ''")
+    if 'writing_scene' not in _columns_of(c, 'sent_messages'):
+        c.execute("ALTER TABLE sent_messages ADD COLUMN writing_scene TEXT NOT NULL DEFAULT ''")
     for table in ('emails', 'sent_messages'):
         for column in ('message_id', 'in_reply_to'):
             c.execute(f'CREATE INDEX IF NOT EXISTS idx_{table}_progress_{column} ON {table}(lower({column}))')
+    from ..writing_memory import initialize as initialize_writing_memory
+    initialize_writing_memory(c)
     c.execute('CREATE INDEX IF NOT EXISTS idx_emails_progress_thread ON emails(lower(thread_id))')
     c.execute('CREATE INDEX IF NOT EXISTS idx_sent_progress_reply ON sent_messages(reply_to_email_id)')
     if 'group_name' not in _columns_of(c, 'contacts'):

@@ -91,12 +91,13 @@ async function undoCases() {
   const details = h.context.describeMailUndo('/api/emails/bulk', JSON.stringify({action:'read',value:false}), {completed:4}, 'a');
   assert.deepEqual(plain(details), {label:'标为未读',count:4,accountLabel:'work@example.test'});
   assert.equal(h.context.describeMailUndo('/api/emails/bulk', '{"action":"move"}', {completed:4,reconciled:1}, 'a').count, 3);
+  assert.equal(h.context.describeMailUndo('/api/mail/sent/-99', '', {completed:1}, 'a').label, '移入已删除');
 }
 
 async function bulkCollectionCase() {
-  const requests = [], offered = [];
+  const requests = [], offered = [], invalidated = [];
   const context = vm.createContext(i18nContext({JSON, Date, URLSearchParams, AbortController, setTimeout, clearTimeout,
-    window:{}, API:'', activeMailAccount:() => ({id:'a'}), document:{body:{classList:{contains:() => false}}},
+    window:{mailaiMailboxStore:{invalidate:id => invalidated.push(id)}}, API:'', activeMailAccount:() => ({id:'a'}), document:{body:{classList:{contains:() => false}}},
     offerUndo:(...args) => offered.push(args), describeMailUndo:() => ({label:'标为已读',count:100}),
     fetch:async (url, options) => { requests.push(options); return {ok:true,json:async () => ({undo_token:'part',completed:100})}; },
   }));
@@ -124,6 +125,8 @@ async function bulkCollectionCase() {
   assert.equal(offered.length, 2);
   assert.equal(offered.at(-1)[0].length, 3);
   assert.equal(offered.at(-1)[2].count, 205);
+  await context.api('/api/mail/sent/-99', {method:'DELETE'});
+  assert.equal(invalidated.at(-1), 'a', 'Deleting a sent email must invalidate mailbox store cache');
 }
 
 function assistantCases() {

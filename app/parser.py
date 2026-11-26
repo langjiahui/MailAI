@@ -373,10 +373,10 @@ def recipient_header_names(message) -> dict[str, str]:
     return result
 
 
-def _read_raw_headers(path: str):
-    """Read at most one MiB of headers, never a message body or attachment."""
+def _read_raw_headers(path: str, *, max_bytes=1024 * 1024, require_complete=False):
+    """Read a bounded header block without loading the message body or attachments."""
     with open(path, "rb") as source:
-        lines, remaining = [], 1024 * 1024
+        lines, remaining = [], max_bytes
         while remaining:
             line = source.readline(remaining)
             if not line:
@@ -385,6 +385,9 @@ def _read_raw_headers(path: str):
             remaining -= len(line)
             if line in (b'\n', b'\r\n'):
                 break
+        else:
+            if require_complete:
+                raise ValueError('Email headers exceed the read budget')
     return BytesParser(policy=policy.default).parsebytes(b''.join(lines), headersonly=True)
 
 

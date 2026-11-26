@@ -345,7 +345,7 @@ html[data-theme] body #system-view .about-overview .app-release-summary { grid-c
 #system-view .about-overview .app-release-summary>summary strong { min-width:0; font-size:11px; font-weight:550; overflow-wrap:anywhere; }
 #system-view .about-overview .app-release-summary>summary svg { margin-left:auto; width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:1.6; }
 #system-view .about-overview .app-release-summary[open]>summary svg { transform:rotate(180deg); }
-html[data-theme] body #system-view .about-overview .app-release-summary>p { padding-top:10px; margin:0; max-width:90ch; white-space:pre-line; overflow-wrap:anywhere; font-size:12px; line-height:1.8; color:var(--desk-ink)!important; }
+html[data-theme] body #system-view .about-overview .app-release-summary>:is(p,.app-release-summary-notes) { padding-top:10px; margin:0; max-width:90ch; white-space:pre-line; overflow-wrap:anywhere; font-size:12px; line-height:1.8; color:var(--desk-ink)!important; }
 html[data-theme] body #system-view .about-overview .app-update-policy { grid-column:1/-1; margin:-10px 0 0; max-width:100ch; font-size:10px; line-height:1.7; color:var(--desk-muted)!important; }
 html[data-theme] body #system-view .about-data { margin:0; padding:0; border:0; border-radius:0; background:transparent; }
 #system-view .about-data .author-section-heading { margin:0 0 20px; padding:0 32px; }
@@ -423,7 +423,7 @@ html[data-theme] body #system-view .about-overview .app-release-summary>summary 
 }
 #system-view .about-overview .app-release-summary>summary strong { flex:none; font-size:12px; }
 #system-view .about-overview .app-release-summary>summary svg { margin:0; width:14px; height:14px; }
-html[data-theme] body #system-view .about-overview .app-release-summary>p {
+html[data-theme] body #system-view .about-overview .app-release-summary>:is(p,.app-release-summary-notes) {
   box-sizing:border-box; width:100%; max-width:none; max-height:320px; overflow:auto;
   margin-top:12px; padding:18px; border-radius:10px; background:var(--desk-surface)!important;
 }

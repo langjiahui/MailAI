@@ -86,6 +86,8 @@ TESTS = (
     'test_work_assistant.py',
     'test_work_assistant_upgrade.py',
     'test_work_memory.py',
+    'test_writing_memory.py',
+    'test_writing_memory_load.py',
     'test_sync_attention_state.py',
     'test_workspace_maturity.py',
     'test_action_policy.py', 'test_rule_policy.py', 'test_retired_security_signals.py', 'test_mail_providers.py',

@@ -175,4 +175,58 @@
   };
   new MutationObserver(updatePreviewButtons).observe(output,{childList:true,subtree:true});
   new MutationObserver(updatePreviewButtons).observe(document.getElementById('compose-ai-panel'),{attributes:true,attributeFilter:['class']});
+
+  function formatReleaseNotesText(value) {
+    return String(value || '')
+      .replace(/\s*\[发布说明\]\([^\s)]+\)\s*(?:·\s*\[完整版本历史\]\([^\s)]+\))?/g, '')
+      .replace(/\[([^\]]+)\]\([^\s)]+\)/g, '$1')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .trim();
+  }
+  function renderReleaseNotesList(container, history, {latestVersion = '', truncated = false, releasesUrl = ''} = {}) {
+    const list = document.createElement('div');
+    list.className = 'update-history-list';
+    history.forEach((item, index) => {
+      const row = document.createElement('article');
+      row.className = 'update-history-item';
+      const meta = document.createElement('div');
+      meta.className = 'update-history-meta';
+      const version = document.createElement('strong');
+      version.className = 'update-history-version';
+      version.textContent = `v${String(item.version).replace(/^v/i, '')}`;
+      meta.append(version);
+      if (index === 0 || (latestVersion && String(item.version).replace(/^v/i, '') === String(latestVersion).replace(/^v/i, ''))) {
+        const badge = document.createElement('span');
+        badge.className = 'update-history-badge';
+        mailaiBindUI(badge, 'textContent', () => updateFlowText('latestBadge'));
+        meta.append(badge);
+      }
+      const copy = document.createElement('p');
+      copy.className = 'update-history-copy';
+      copy.textContent = formatReleaseNotesText(item.notes);
+      row.append(meta, copy);
+      list.append(row);
+    });
+    if (truncated) {
+      const more = document.createElement('p');
+      more.className = 'update-history-more';
+      const hint = document.createElement('span');
+      mailaiBindUI(hint, 'textContent', () => updateFlowText('historyMore', history.length));
+      more.append(hint);
+      if (releasesUrl) {
+        more.append(document.createTextNode(' '));
+        const link = document.createElement('a');
+        link.className = 'update-history-more-link';
+        link.href = releasesUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        mailaiBindUI(link, 'textContent', () => updateFlowText('historyLink'));
+        more.append(link);
+      }
+      list.append(more);
+    }
+    container.replaceChildren(list);
+  }
+  window.mailaiFormatReleaseNotesText = formatReleaseNotesText;
+  window.mailaiRenderReleaseNotesList = renderReleaseNotesList;
 })();

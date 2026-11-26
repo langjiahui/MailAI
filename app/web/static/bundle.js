@@ -1851,6 +1851,56 @@ const MAILAI_UI_COPY = {
   "model.saveFailed": ["配置保存失败，请重试。", "Could not save settings. Try again."],
   "model.visionFailed": ["图片识别不可用，请关闭图片识别或更换模型后重试。", "Image recognition is unavailable. Disable it or change the model and try again."],
   "work.stylePlaceholder": ["例如：结论在前，语气自然，避免客套落款。", "For example: lead with the conclusion, use a natural tone, and avoid formal sign-offs."],
+  "writingMemory.title": ["从已发送邮件学习", "Learn from sent mail"],
+  "writingMemory.hint": ["在本机后台学习已发邮件里的写法，稳定后按收件人自动用于小邮帮写。", "XiaoYou learns from sent mail locally and automatically applies established habits by recipient."],
+  "writingMemory.enable": ["开启后台学习", "Turn on background learning"],
+  "writingMemory.pauseCollection": ["暂停学习", "Pause learning"],
+  "writingMemory.resumeCollection": ["继续学习", "Resume learning"],
+  "writingMemory.history": ["首次整理范围", "Initial history"],
+  "writingMemory.days": ["最近 {count} 天", "Past {count} days"],
+  "writingMemory.observed": ["已分析 {count} 封已发送邮件", "{count} sent messages analyzed"],
+  "writingMemory.masterOff": ["启用长期记忆后可使用此功能。", "Turn on lasting memory to use this feature."],
+  "writingMemory.empty": ["学到的稳定习惯会显示在这里。", "Established writing habits appear here."],
+  "writingMemory.refreshError": ["记忆暂时无法更新，请刷新后重试。", "Memory could not be updated. Refresh and try again."],
+  "writingMemory.clear": ["清除邮件学习记录", "Clear learned mail habits"],
+  "writingMemory.clearHint": ["清除这个邮箱的邮件学习记录，之后从新发出的邮件开始整理。", "Clear mail learning for this account and start with newly sent messages."],
+  "writingMemory.confirmClear": ["确认清除", "Clear learned habits"],
+  "writingMemory.deleteHint": ["删除后，小邮将停止使用这条习惯。", "XiaoYou will stop applying this habit after deletion."],
+  "writingMemory.pause": ["停用", "Stop using"],
+  "writingMemory.resume": ["重新启用", "Use again"],
+  "writingMemory.paused": ["已停用", "Inactive"],
+  "writingMemory.scope": ["适用范围", "Scope"],
+  "writingMemory.scope.account": ["当前邮箱", "This account"],
+  "writingMemory.role.leader": ["领导", "Manager"],
+  "writingMemory.role.customer": ["客户", "Customer"],
+  "writingMemory.role.colleague": ["同事", "Colleague"],
+  "writingMemory.role.partner": ["合作方", "Partner"],
+  "writingMemory.scene.compose": ["新写", "New mail"],
+  "writingMemory.scene.reply": ["回复", "Reply"],
+  "writingMemory.field.language": ["语言", "Language"],
+  "writingMemory.field.length": ["篇幅", "Length"],
+  "writingMemory.field.opening": ["开头", "Opening"],
+  "writingMemory.field.subject": ["主题", "Subject"],
+  "writingMemory.field.tone": ["语气", "Tone"],
+  "writingMemory.field.structure": ["结构", "Structure"],
+  "writingMemory.field.salutation": ["称呼", "Greeting"],
+  "writingMemory.value.zh": ["中文", "Chinese"],
+  "writingMemory.value.en": ["英文", "English"],
+  "writingMemory.value.short": ["简短", "Brief"],
+  "writingMemory.value.medium": ["篇幅适中", "Moderate length"],
+  "writingMemory.value.long": ["交代背景和步骤", "Include context and steps"],
+  "writingMemory.value.conclusion": ["先给结论", "Lead with the conclusion"],
+  "writingMemory.value.action": ["主题写明请对方采取的行动", "State the requested action in the subject"],
+  "writingMemory.value.formal": ["正式", "Formal"],
+  "writingMemory.value.friendly": ["友好", "Friendly"],
+  "writingMemory.value.list": ["多个事项分点列出", "List separate points"],
+  "writingMemory.evidence": ["依据 · {count} 条不同往来", "Evidence · {count} distinct threads"],
+  "writingMemory.compare": ["查看修改", "View edits"],
+  "writingMemory.aiBefore": ["小邮填入", "Inserted by XiaoYou"],
+  "writingMemory.sentAfter": ["修改后发出", "Edited and sent"],
+  "writingMemory.noSubject": ["（无主题）", "(No subject)"],
+  "writingMemory.applied": ["本次写法 · {style}", "Writing style · {style}"],
+  "writingMemory.audienceChanged": ["收件人已变化，可按新对象重新生成。", "Recipients changed. You can regenerate for the new audience."],
   "work.manuallyEdited": ["已手动调整", "Manually edited"],
   "work.summaryMore": ["共 {count} 条记忆，可在管理中查看全部。", "{count} memories in total. Open Manage memory to see all."],
   "work.noSavedMemories": ["还没有沉淀出长期记忆。照常与小邮沟通就好，稳定的偏好会逐步记住。", "No lasting memories yet. Talk with XiaoYou as usual; stable preferences will be learned over time."],
@@ -2449,6 +2499,12 @@ const MAILAI_UI_COPY = {
   "updateFlow.changed": ["更新信息已变化，请重新检查并下载更新。", "Update information has changed. Check again and download the update."],
   "updateFlow.missing": ["安装包已移除，请重新下载更新。", "The installer was removed. Download the update again."],
   "updateFlow.corrupt": ["安装包校验失败，请重新下载更新。", "Installer verification failed. Download the update again."],
+  "updateFlow.notesSingle": ["{0} 版本发布说明", "Release notes for {0}"],
+  "updateFlow.notesMulti": ["包含跨越 {0} 个版本的更新", "Includes changes across {0} versions"],
+  "updateFlow.latestBadge": ["最新", "Latest"],
+  "updateFlow.historyLink": ["完整版本历史", "Full release history"],
+  "updateFlow.historyMore": ["已展示近 {0} 个版本，更早记录请查看", "Showing the last {0} versions; check the"],
+  "updateFlow.aboutMulti": ["新版本 {0} 更新内容（共 {1} 版）", "What’s new in {0} ({1} releases)"],
   "mailImport.preflight": ["有 {0} 个文件超过当前上限，将跳过并保留重试记录。", "{0} files exceed the current limit. They will be skipped and recorded for retry."],
   "mailImport.largeMode": ["大邮件模式（单封最多 256 MB）", "Large-message mode (up to 256 MB each)"],
   "mailImport.limitNote": ["默认单封 64 MB。超限文件会自动跳过，其他文件继续；大邮件的附件分块处理，原件完整保留。", "The default is 64 MB per message. Oversized files are skipped while others continue. Large attachments are processed in chunks; originals are preserved."],
@@ -21770,6 +21826,7 @@ function draftPayload() {
     send_at: document.getElementById('compose-send-at')?.value || '',
     followup_days: Number(document.getElementById('compose-followup-days')?.value || 0),
     followup_at: document.getElementById('compose-followup-at')?.value || '',
+    ...(draftSession.writingSample ? {writing_sample:draftSession.writingSample} : {}),
   };
 }
 
@@ -21875,6 +21932,9 @@ async function openCompose(seed = {}) {
   composeAccountId = seed.account_id || activeMailAccount()?.id || '';
   window.mailaiProductivityComposeReset?.(seed);
   draftSession = {id: seed.id || null, revision:seed.revision || null, accountId:composeAccountId, pending: Promise.resolve(), canceled: false, busy: false, assistantReview: Boolean(seed.assistant_review)};
+  if (seed.id && seed.writing_sample) {
+    try { draftSession.writingSample = JSON.parse(seed.writing_sample); } catch (_) {}
+  }
   currentDraftId = seed.id || null;
   signatureState = {items:[], default_id:''};
   composeContext = {source_draft_email_id:seed.source_draft_email_id || null, mode: seed.mode || 'compose', reply_to_email_id: seed.reply_to_email_id || null, in_reply_to: seed.in_reply_to || '', references: seed.references || '', original_text: seed.original_text || ''};
@@ -22392,6 +22452,20 @@ function queueDraftSave() {
   if (!draftMaxSaveTimer) draftMaxSaveTimer = setTimeout(save, 15000);
 }
 
+function composeRecipientFields() {
+  return Object.fromEntries(['to','cc','bcc'].map(field => [field + '_addr', normalizeRecipientText(document.getElementById('compose-' + field).value)]));
+}
+
+function composeWritingAudience(fields = composeRecipientFields()) {
+  const seen = new Set();
+  return ['to_addr','cc_addr','bcc_addr'].map(field => {
+    const group = [...new Set(recipientEmails(fields[field]).map(address => address.toLowerCase()))].sort();
+    const unique = group.filter(address => !seen.has(address));
+    group.forEach(address => seen.add(address));
+    return unique;
+  });
+}
+
 function composeRecipientContext() {
   const rows = [
     [mailaiText('收件人'), document.getElementById('compose-to').value.trim()],
@@ -22415,6 +22489,18 @@ function refreshComposeAiContext() {
   const panel = document.getElementById('compose-ai-panel');
   if (!panel) return;
   const values = composeAiAvailability();
+  const memoryStatus = document.getElementById('compose-ai-writing-memory');
+  if (memoryStatus) {
+    const staleAudience = composeAiSuggestion?.audience && JSON.stringify(composeAiSuggestion.audience) !== JSON.stringify(composeWritingAudience());
+    const rules = Object.entries(composeAiSuggestion?.writingRules || {});
+    mailaiBindUI(memoryStatus, 'textContent', () => {
+      if (staleAudience) return mailaiT('writingMemory.audienceChanged') || MAILAI_UI_COPY['writingMemory.audienceChanged'][0];
+      if (!rules.length) return '';
+      const label = key => mailaiT(key) || MAILAI_UI_COPY[key][0];
+      const hints = rules.slice(0, 3).map(([field, item]) => field === 'salutation' ? item.value : label('writingMemory.value.' + item.value));
+      return label('writingMemory.applied').replace('{style}', hints.join(' · '));
+    });
+  }
   const bodyLabel = ['reply','reply_all'].includes(composeContext.mode) ? mailaiText('已有回复') : (composeContext.mode === 'forward' ? mailaiText('转发说明') : mailaiText('已有正文'));
   const labels = {get subject() { return mailaiText('主题'); }, get recipients() { return mailaiText('收件人'); }, get original() { return mailaiText('原邮件'); }, body:bodyLabel, get attachments() { return mailaiText('附件名称'); }};
   const selected = [];
@@ -22440,6 +22526,7 @@ function resetComposeAiPanel() {
   document.getElementById('compose-ai-error').classList.add('hidden');
   document.getElementById('compose-ai-undo').classList.add('hidden');
   draftSession.aiUndo = null; draftSession.aiRetry = null;
+  draftSession.writingLengthTouched = false;
   composeAiController?.abort(); composeAiController = null;
   document.querySelectorAll('#btn-ai-generate, #btn-ai-regenerate, [data-ai-compose]').forEach(button => setLoading(button, false));
   composeAiSuggestion = '';
@@ -22587,8 +22674,9 @@ async function aiCompose(operation, button) {
     setTimeout(() => editor.classList.remove('needs-body'), 2400);
     return toast(mailaiText('请先在左侧填写邮件正文，再使用此功能'), 'warn');
   }
-  const selected = new Set([...document.querySelectorAll('.compose-ai-context-options input:checked:not(:disabled)')].map(input => input.value));
   const values = composeAiAvailability();
+  const selected = new Set([...document.querySelectorAll('.compose-ai-context-options input:checked')].map(input => input.value)
+    .filter(key => Array.isArray(values[key]) ? values[key].length : values[key]));
   const instructionInput = document.getElementById('compose-ai-instruction');
   const hasReference = instructionInput.value.trim() || (quickRewrite && values.body) ||
     ['subject','recipients','original','body'].some(key => selected.has(key) && values[key]) ||
@@ -22620,11 +22708,16 @@ async function aiCompose(operation, button) {
   panel.classList.add('is-thinking'); panel.classList.remove('has-result');
   mailaiBindUI(document.getElementById('compose-ai-status'), "textContent", () => (mailaiText('我正在结合你勾选的邮件上下文组织内容…')));
   try {
+    const recipientFields = composeRecipientFields();
+    const audience = composeWritingAudience(recipientFields);
     const request = {
       operation,
       user_instruction: document.getElementById('compose-ai-instruction').value.trim(),
       subject: selected.has('subject') ? values.subject : '',
       recipients: selected.has('recipients') ? values.recipients : '',
+      recipient_fields: selected.has('recipients') ? recipientFields : null,
+      automatic_tone: !session.personaTouchedTone,
+      automatic_length: !session.writingLengthTouched,
       original_text: selected.has('original') ? values.original : '',
       source_email_id: selected.has('original') && operation === 'reply' ? composeContext.reply_to_email_id : null,
       use_work_preferences: Boolean(document.getElementById('work-use-preferences')?.checked),
@@ -22676,6 +22769,9 @@ async function aiCompose(operation, button) {
     if (!current()) return;
     composeAiSuggestion = normalizeComposeAiSuggestion(result, !quickRewrite,
       Boolean(currentSignatureId || document.getElementById('compose-signature-content').innerText.trim()));
+    composeAiSuggestion.audience = audience;
+    composeAiSuggestion.writingEpoch = result.writing_memory?.epoch || '';
+    composeAiSuggestion.writingRules = result.writing_memory?.rules || {};
     renderPreview(composeAiSuggestion);
     window.mailaiShowComposeChecks?.(result.checks || []);
     document.getElementById('btn-ai-replace-subject').classList.toggle('hidden', !composeAiSuggestion.subject);
@@ -22726,7 +22822,7 @@ function rememberComposeAiEdit(before, fields, label) {
   const after = composeAiEditSnapshot();
   fields = fields.filter(key => before[key] !== after[key]);
   if (!fields.length) return;
-  draftSession.aiUndo = {before, after, fields};
+  draftSession.aiUndo = {before, after, fields, writingSample:draftSession.writingSample};
   const button = document.getElementById('compose-ai-undo');
   mailaiBindUI(button, "textContent", () => (mailaiTemplate`撤销上次${label}修改`));
   button.classList.remove('hidden');
@@ -22743,6 +22839,7 @@ function undoComposeAiEdit() {
   if (edit.fields.includes('subject')) document.getElementById('compose-subject').value = edit.before.subject;
   if (edit.fields.includes('body')) composeMessageElement().innerHTML = edit.before.body;
   if (edit.fields.includes('signature')) renderComposeSignature(edit.before.signatureId, edit.before.signature);
+  draftSession.writingSample = edit.writingSample;
   draftSession.aiUndo = null;
   document.getElementById('compose-ai-undo').classList.add('hidden');
   clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
@@ -22819,6 +22916,18 @@ function typeComposeAiText(target, text, append, complete) {
   frame = requestAnimationFrame(tick);
 }
 
+function rememberWritingSample(field, suggestion, value, prefix = '') {
+  const sample = {...draftSession.writingSample};
+  const limit = field === 'body' ? 3000 : 300;
+  if (suggestion.writingEpoch && value && value.length <= limit && prefix.length <= limit &&
+      JSON.stringify(suggestion.audience) === JSON.stringify(composeWritingAudience())) {
+    sample[field] = {value, prefix, epoch:suggestion.writingEpoch, audience:suggestion.audience};
+  } else {
+    delete sample[field];
+  }
+  draftSession.writingSample = Object.keys(sample).length ? sample : null;
+}
+
 function applyComposeAiSuggestion(mode) {
   finishComposeAiTyping();
   if (!composeAiSuggestion || draftSession.canceled || draftSession.busy) return;
@@ -22828,16 +22937,25 @@ function applyComposeAiSuggestion(mode) {
     if (!suggestion.subject) return;
     typeComposeAiText(document.getElementById('compose-subject'), suggestion.subject, false, () => {
       rememberComposeAiEdit(before, ['subject'], mailaiText('主题'));
+      if (before.subject !== document.getElementById('compose-subject').value) {
+        rememberWritingSample('subject', suggestion, document.getElementById('compose-subject').value.trim());
+      }
       clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
       toast(mailaiText('AI 主题已填入主题栏'), 'success');
     });
     return;
   }
   const body = composeMessageElement();
+  const prefix = mode === 'append' ? composeMessageText() : '';
   typeComposeAiText(body, suggestion.body || '', mode === 'append', () => {
     if (suggestion.signoff && !currentSignatureId && !document.getElementById('compose-signature-content').innerText.trim())
       renderComposeSignature('', esc(suggestion.signoff).replace(/\n/g, '<br>'));
     rememberComposeAiEdit(before, ['body', 'signature', 'signatureId'], mode === 'append' ? mailaiText('追加内容') : mailaiText('正文'));
+    if (before.body !== body.innerHTML) {
+      const filled = composeMessageText();
+      const applied = prefix ? (filled.startsWith(prefix + '\n') ? filled.slice(prefix.length).trim() : '') : filled;
+      rememberWritingSample('body', suggestion, applied, prefix);
+    }
     clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
     const target = ['reply','reply_all'].includes(composeContext.mode) ? mailaiText('回复') : (composeContext.mode === 'forward' ? mailaiText('转发说明') : mailaiText('正文'));
     toast(mode === 'append' ? mailaiTemplate`AI 草稿已追加到${target}` : mailaiTemplate`AI 草稿已填入${target}，请核对后发送`, 'success');
@@ -23231,7 +23349,7 @@ async function api(path, opts = {}) {
   }
   const data = await res.json();
   if (opts.method && /^\/api\/system\/mail\/(?:login|logout|account\/update)/.test(path)) window.mailaiMailboxStore?.invalidate();
-  if (opts.method && !['GET','HEAD'].includes(opts.method) && path.split('?')[0]!=='/api/mail/tags/snapshot' && /^\/api\/(?:emails(?:\/|$)|mail\/(?:tags|tag-rules|bulk|send|outbox|undo|folders\/sync|client-imports)|drafts|productivity\/(?!search)|system\/(?:server-cleanup|backups\/.*restore|portable-backups\/restore))/.test(path)) {
+  if (opts.method && !['GET','HEAD'].includes(opts.method) && path.split('?')[0]!=='/api/mail/tags/snapshot' && /^\/api\/(?:emails(?:\/|$)|mail\/(?:tags|tag-rules|bulk|send|sent|outbox|undo|folders\/sync|client-imports)|drafts|trash\/purge\/execute|productivity\/(?!search)|system\/(?:server-cleanup|backups\/.*restore|portable-backups\/restore))/.test(path)) {
     window.mailaiMailboxStore?.invalidate(accountId);
   }
   if (data.undo_token && typeof offerUndo === 'function') {
@@ -24549,13 +24667,15 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
         if (result.failed?.length) throw new Error(result.failed[0].error || mailaiText('删除失败'));
         if (activeMailAccount()?.id === accountId) {
           // Commit the successful deletion locally before any slower refresh.
-          // Invalidate reads already in flight so they cannot restore the old row.
+          // Invalidate mailbox cache and in-flight reads so stale rows cannot reappear.
           ++mailLoadRevision;
-          sentMessages = sentMessages.filter(item => Number(item.id) !== Number(row.id));
+          window.mailaiMailboxStore?.invalidate(accountId);
+          sentMessages = sentMessages.filter(item => String(item.id) !== String(row.id));
+          if (Array.isArray(searchResults)) searchResults = searchResults.filter(item => String(item.id) !== String(row.id));
           if (button.isConnected && pane.contains(button)) resetReadingPane();
           if (specialMailbox === 'sent') renderSpecialMailbox();
           updateSidebar();
-          void loadData({silent:true});
+          void loadData({silent:true, requireFresh:true});
         }
         toast(mailaiText('已发送邮件已移入已删除，稍后同步服务器'), 'success');
       } catch (error) { toast(mailaiSystemMessage(error.message), 'error'); }
@@ -26031,12 +26151,33 @@ function renderAppVersion(result) {
   const releaseSummary = document.getElementById('app-release-summary');
   const releaseTitle = document.getElementById('app-release-summary-title');
   const releaseNotes = document.getElementById('app-release-summary-notes');
-  const notes = String(result.notes || '').trim();
-  if (releaseSummary) releaseSummary.classList.toggle('hidden', !notes);
-  if (releaseTitle && notes) mailaiBindUI(releaseTitle, "textContent", () => (result.available
-    ? mailaiTemplate`新版本 ${result.latest_version} 更新内容`
-    : mailaiText('查看更新内容')));
-  if (releaseNotes) releaseNotes.textContent = notes;
+  const formatNotes = text => typeof window !== 'undefined' && window.mailaiFormatReleaseNotesText
+    ? window.mailaiFormatReleaseNotesText(text)
+    : String(text || '').trim();
+  const notes = formatNotes(result.notes || '');
+  const history = Array.isArray(result?.history) ? result.history.filter(item => item && item.version && item.notes) : [];
+  const historyUrl = /^https:\/\//i.test(String(result?.releases_url || result?.release_url || '').trim())
+    ? String(result.releases_url || result.release_url).trim()
+    : '';
+  if (releaseSummary) releaseSummary.classList.toggle('hidden', !notes && !history.length);
+  if (releaseTitle && (notes || history.length)) {
+    mailaiBindUI(releaseTitle, "textContent", () => (result.available
+      ? (history.length > 1
+        ? updateFlowText('aboutMulti', result.latest_version, history.length)
+        : mailaiTemplate`新版本 ${result.latest_version} 更新内容`)
+      : mailaiText('查看更新内容')));
+  }
+  if (releaseNotes) {
+    if (result.available && history.length > 1 && typeof window !== 'undefined' && window.mailaiRenderReleaseNotesList && typeof document.createElement === 'function') {
+      window.mailaiRenderReleaseNotesList(releaseNotes, history, {
+        latestVersion: result.latest_version,
+        truncated: Boolean(result.history_truncated),
+        releasesUrl: historyUrl,
+      });
+    } else {
+      releaseNotes.textContent = notes;
+    }
+  }
   if (!status) return;
   if (result.development) mailaiBindUI(status, "textContent", () => (mailaiText('源码运行模式；安装包版本会自动检查更新。')));
   else if (!result.supported) mailaiBindUI(status, "textContent", () => (mailaiTemplate`当前设备 ${result.device || ''} 暂无对应安装包。`));
@@ -26065,8 +26206,44 @@ function renderAppUpdateDialog() {
   title.removeAttribute('data-i18n');
   mailaiBindUI(title, 'textContent', () => `${result.current_version} → ${result.latest_version}`);
   mailaiBindUI(document.getElementById('update-dialog-device'), "textContent", () => (mailaiTemplate`已为这台设备匹配 ${appDeviceName(result.device)} 安装包。`));
-  mailaiBindUI(document.getElementById('update-dialog-notes-title'), "textContent", () => (mailaiTemplate`${result.latest_version} 版本发布说明`));
-  mailaiBindUI(document.getElementById('update-dialog-notes'), "textContent", () => String(result.notes || mailaiText('本版本暂未提供发布说明。')).replace(/\[([^\]]+)\]\([^\s)]+\)/g, '$1').replace(/\*\*([^*]+)\*\*/g, '$1'));
+  const history = Array.isArray(result?.history) ? result.history.filter(item => item && item.version && item.notes) : [];
+  const rawHistoryUrl = String(result?.releases_url || result?.release_url || '').trim();
+  const historyUrl = /^https:\/\//i.test(rawHistoryUrl) ? rawHistoryUrl : '';
+  const historyLink = document.getElementById('update-dialog-history-link');
+  if (historyLink) {
+    if (historyUrl) {
+      historyLink.href = historyUrl;
+      historyLink.classList.remove('hidden');
+      mailaiBindUI(historyLink, 'textContent', () => updateFlowText('historyLink'));
+    } else {
+      historyLink.removeAttribute('href');
+      historyLink.classList.add('hidden');
+    }
+  }
+  const notesTitle = document.getElementById('update-dialog-notes-title');
+  const notesHost = document.getElementById('update-dialog-notes');
+  if (history.length > 1 && typeof window !== 'undefined' && window.mailaiRenderReleaseNotesList && typeof document.createElement === 'function') {
+    mailaiBindUI(notesTitle, 'textContent', () => updateFlowText('notesMulti', history.length));
+    window.mailaiRenderReleaseNotesList(notesHost, history, {
+      latestVersion: result.latest_version,
+      truncated: Boolean(result.history_truncated),
+      releasesUrl: historyUrl,
+    });
+  } else {
+    mailaiBindUI(notesTitle, 'textContent', () => updateFlowText('notesSingle', result.latest_version));
+    const formatNotes = typeof window !== 'undefined' && window.mailaiFormatReleaseNotesText
+      ? window.mailaiFormatReleaseNotesText
+      : text => String(text || '').replace(/\[([^\]]+)\]\([^\s)]+\)/g, '$1').replace(/\*\*([^*]+)\*\*/g, '$1').trim();
+    const summary = formatNotes(history[0]?.notes || result.notes);
+    if (typeof document.createElement === 'function' && typeof notesHost?.replaceChildren === 'function') {
+      const plain = document.createElement('span');
+      plain.className = 'update-dialog-notes-plain';
+      mailaiBindUI(plain, 'textContent', () => summary || mailaiText('本版本暂未提供发布说明。'));
+      notesHost.replaceChildren(plain);
+    } else {
+      mailaiBindUI(notesHost, 'textContent', () => summary || mailaiText('本版本暂未提供发布说明。'));
+    }
+  }
   mailaiBindUI(document.getElementById('update-dialog-warning'), 'textContent', () => appUpdateMessage(result.unsigned_warning));
 }
 
@@ -30282,7 +30459,8 @@ async function submitComposeMail(payload, preflightConfirmed = false) {
     payload.id = session.id;
     session.sendToken ||= crypto.randomUUID();
     payload.expected_revision = session.revision || null;
-    const result = await api('/api/mail/outbox', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...payload, request_token:session.sendToken})});
+    const {writing_sample: _writingSample, ...envelope} = payload;
+    const result = await api('/api/mail/outbox', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...envelope, request_token:session.sendToken})});
     session.canceled = true;
     if (session === draftSession) { currentDraftId = null; clearComposePreflight(); hideCompose(); }
     const [sentList, draftList] = await Promise.all([api('/api/mail/sent', {accountId}), api('/api/drafts', {accountId})]);
@@ -30354,6 +30532,7 @@ document.getElementById('compose-preflight').addEventListener('click', async eve
 document.getElementById('btn-compose-ai').addEventListener('click', () => toggleComposeAiPanel());
 document.getElementById('btn-close-compose-ai').addEventListener('click', () => toggleComposeAiPanel(false));
 document.getElementById('compose-ai-instruction').addEventListener('input', refreshComposeAiContext);
+document.getElementById('compose-ai-length').addEventListener('change', () => { draftSession.writingLengthTouched = true; });
 document.addEventListener('mailai:language-changed', refreshComposeAiContext);
 document.querySelector('.compose-ai-context-options').addEventListener('change', refreshComposeAiContext);
 document.querySelector('.compose-ai-quick-actions').addEventListener('click', event => {
@@ -32215,7 +32394,8 @@ function describeMailUndo(path, body, result, accountId) {
   let payload = {};
   try { payload = JSON.parse(body || '{}'); } catch (_) {}
   const query = new URLSearchParams(path.split('?')[1] || '');
-  const action = payload.action || path.split('?')[0].split('/').at(-1);
+  const cleanPath = path.split('?')[0];
+  const action = payload.action || (/^\/api\/mail\/sent\//.test(cleanPath) ? 'trash' : cleanPath.split('/').at(-1));
   const value = payload.value !== false && query.get('value') !== 'false';
   const moveTarget = payload.target || result.folder || query.get('target');
   const moveLabel = result.local_only ? (moveTarget === '__local_archive__' ? mailaiText('本地归档') : mailaiText('收件箱（仅本机）')) : moveTarget;
@@ -34303,6 +34483,227 @@ function mailCardDate(value, now = new Date()) {
 })();
 
 ;
+/* ---- writing-memory.js ---- */
+/* Manage opt-in sent-mail learning inside XiaoYou's existing memory dialog. */
+(() => {
+  const key = name => `writingMemory.${name}`;
+  const copy = name => mailaiT(key(name)) || MAILAI_UI_COPY[key(name)]?.[0] || name;
+  const button = (action, label) => `<button type="button" data-writing-action="${action}" data-i18n="${key(label)}">${esc(copy(label))}</button>`;
+  const options = {
+    language:['zh','en'], length:['short','medium','long'], opening:['conclusion'],
+    subject:['action'], tone:['formal','friendly'], structure:['list'],
+  };
+
+  function markChange(before, after) {
+    let start = 0, end = 0;
+    while (start < before.length && start < after.length && before[start] === after[start]) start++;
+    while (end < before.length - start && end < after.length - start && before.at(-1 - end) === after.at(-1 - end)) end++;
+    const mark = (text, tag) => esc(text.slice(0, start)) + `<${tag}>${esc(text.slice(start, text.length - end))}</${tag}>` + esc(end ? text.slice(-end) : '');
+    return [mark(before, 'del'), mark(after, 'ins')];
+  }
+
+  function evidenceMarkup(item) {
+    if (!item.evidence.length) return '';
+    const heading = copy('evidence').replace('{count}', item.count);
+    return `<div class="writing-memory-sources"><small>${esc(heading)}</small>${item.evidence.map(entry => {
+      const comparison = entry.before && entry.after ? markChange(entry.before, entry.after) : null;
+      return `<div class="writing-memory-evidence">
+        <div class="writing-memory-evidence-heading"><button type="button" data-writing-source="${esc(entry.source)}" data-writing-id="${Number(entry.id)}">${esc(entry.subject || copy('noSubject'))}</button>
+        <time>${esc(fmtDate(entry.date))}</time></div>
+        ${comparison ? `<details class="writing-memory-comparison"><summary data-i18n="writingMemory.compare">${esc(copy('compare'))}</summary><div class="writing-memory-diff">
+          <blockquote><b data-i18n="writingMemory.aiBefore">${esc(copy('aiBefore'))}</b><div>${comparison[0]}</div></blockquote>
+          <blockquote><b data-i18n="writingMemory.sentAfter">${esc(copy('sentAfter'))}</b><div>${comparison[1]}</div></blockquote>
+        </div></details>` : ''}</div>`;
+    }).join('')}</div>`;
+  }
+
+  function ruleMarkup(rule) {
+    const target = rule.scope === 'contact' ? rule.target : rule.scope === 'role' ? copy('role.' + rule.target) : copy('scope.account');
+    const value = rule.field === 'salutation' ? rule.value : copy('value.' + rule.value);
+    const control = rule.field === 'salutation'
+      ? `<input name="rule_value" maxlength="40" value="${esc(value)}">`
+      : `<select name="rule_value">${(options[rule.field] || []).map(option =>
+        `<option value="${option}" data-i18n="writingMemory.value.${option}" ${option === rule.value ? 'selected' : ''}>${esc(copy('value.' + option))}</option>`).join('')}</select>`;
+    const metadata = [target, copy('scene.' + rule.scene), rule.status === 'paused' ? copy('paused') : '',
+      rule.edited ? (mailaiT('work.manuallyEdited') || MAILAI_UI_COPY['work.manuallyEdited'][0]) : ''].filter(Boolean);
+    return `<details class="writing-memory-row" data-writing-rule="${rule.id}">
+      <summary><span><strong>${esc(value)}</strong><small>${esc(metadata.join(' · '))}</small></span>
+        <small class="writing-memory-field">${esc(copy('field.' + rule.field))}</small></summary>
+      <div class="writing-memory-row-body">
+      ${evidenceMarkup(rule)}
+      <div class="work-memory-item-actions">
+        ${rule.status === 'paused' ? button('resume','resume') : button('pause','pause')}
+        <button type="button" data-writing-action="edit" data-i18n="work.edit">${esc(mailaiT('work.edit') || MAILAI_UI_COPY['work.edit'][0])}</button>
+        <button type="button" data-writing-action="delete" data-i18n="work.deleteMemory">${esc(mailaiT('work.deleteMemory') || MAILAI_UI_COPY['work.deleteMemory'][0])}</button>
+      </div>
+      <div class="writing-memory-editor" hidden>
+        <label><span data-i18n="writingMemory.field.${esc(rule.field)}">${esc(copy('field.' + rule.field))}</span>${control}</label>
+        ${rule.scope !== 'account' && rule.field !== 'salutation' ? `<label><span data-i18n="writingMemory.scope">${esc(copy('scope'))}</span>
+          <select name="rule_scope"><option value="${rule.scope}">${esc(target)}</option><option value="account" data-i18n="writingMemory.scope.account">${esc(copy('scope.account'))}</option></select></label>` : ''}
+        <div class="work-memory-edit-actions">
+          <button type="button" data-writing-action="save" data-i18n="work.saveEdit">${esc(mailaiT('work.saveEdit') || MAILAI_UI_COPY['work.saveEdit'][0])}</button>
+          <button type="button" data-writing-action="cancel" data-i18n="work.cancel">${esc(mailaiT('work.cancel') || MAILAI_UI_COPY['work.cancel'][0])}</button>
+        </div>
+      </div>
+      </div>
+    </details>`;
+  }
+
+  window.mountWritingMemory = (dialog, account) => {
+    const panel = document.createElement('details');
+    panel.className = 'work-memory-learning writing-memory-panel';
+    panel.innerHTML = `<summary data-i18n="writingMemory.title">${esc(copy('title'))}</summary>
+      <p class="writing-memory-hint" data-i18n="writingMemory.hint">${esc(copy('hint'))}</p>
+      <div class="writing-memory-toolbar">
+        <small role="status" data-writing-status></small>
+        <div class="work-memory-edit-actions writing-memory-controls">
+          <label><span data-i18n="writingMemory.history">${esc(copy('history'))}</span><select data-writing-days>
+            ${[30,90,180].map(days => `<option value="${days}" ${days === 90 ? 'selected' : ''}>${esc(copy('days').replace('{count}', days))}</option>`).join('')}
+          </select></label>
+          ${button('collect','enable')}${button('clear','clear')}
+        </div>
+      </div>
+      <div data-writing-rules></div>
+      <footer class="work-memory-pagination" hidden>
+        <button type="button" data-writing-action="prev" data-i18n="work.previous">${esc(mailaiT('work.previous') || MAILAI_UI_COPY['work.previous'][0])}</button>
+        <span data-writing-page></span>
+        <button type="button" data-writing-action="next" data-i18n="work.next">${esc(mailaiT('work.next') || MAILAI_UI_COPY['work.next'][0])}</button>
+      </footer>`;
+    dialog.append(panel);
+    const session = new AbortController();
+    const endpoint = '/api/work/writing-memory';
+    const list = panel.querySelector('[data-writing-rules]');
+    const status = panel.querySelector('[data-writing-status]');
+    const days = panel.querySelector('[data-writing-days]');
+    const collect = panel.querySelector('[data-writing-action="collect"]');
+    const clear = panel.querySelector('[data-writing-action="clear"]');
+    const footer = panel.querySelector('footer');
+    const current = () => dialog.open && dialog.isConnected && activeMailAccount()?.id === account.id;
+    const request = (path = '', method = 'GET', json) => api(endpoint + path, {
+      accountId:account.id, signal:session.signal, method,
+      ...(json ? {headers:{'Content-Type':'application/json'},body:JSON.stringify(json)} : {}),
+    });
+    const showStatus = (key, values = {}) => {
+      mailaiBindUI(status, 'textContent', () => key ? Object.entries(values).reduce((s,[name,value]) => s.replace(`{${name}}`, value), copy(key)) : '');
+    };
+    let busy = false, data = null, offset = 0, shown = '', renderedItems = [];
+    const pageSize = 12;
+
+    function render({preserveOpen = true} = {}) {
+      if (!data) return;
+      const settings = data.settings;
+      mailaiBindUI(collect, 'textContent', () => copy(settings.collect ? 'pauseCollection' : settings.initialized ? 'resumeCollection' : 'enable'));
+      days.closest('label').hidden = settings.initialized;
+      days.disabled = !settings.enabled;
+      clear.hidden = !settings.initialized;
+      collect.disabled = busy || !settings.enabled;
+      clear.disabled = busy;
+      showStatus(settings.enabled ? (settings.initialized ? 'observed' : '') : 'masterOff', {count:data.observed});
+      footer.hidden = data.total <= pageSize;
+      footer.querySelector('[data-writing-page]').textContent = data.total ? `${offset + 1}–${offset + data.items.length} / ${data.total}` : '';
+      footer.querySelector('[data-writing-action="prev"]').disabled = busy || !offset;
+      footer.querySelector('[data-writing-action="next"]').disabled = busy || offset + data.items.length >= data.total;
+      const signature = JSON.stringify([currentI18nLanguage(), settings.initialized, data.items]);
+      if (shown === signature || preserveOpen && list.querySelector('.writing-memory-editor:not([hidden]), details[open], :focus-visible')) return;
+      const openIds = new Set([...list.querySelectorAll('[data-writing-rule][open]')].map(row => row.dataset.writingRule));
+      list.innerHTML = data.items.length ? data.items.map(ruleMarkup).join('') :
+        settings.initialized ? `<p class="writing-memory-empty">${esc(copy('empty'))}</p>` : '';
+      for (const row of list.querySelectorAll('[data-writing-rule]')) row.open = openIds.has(row.dataset.writingRule);
+      renderedItems = data.items;
+      shown = signature;
+    }
+
+    async function run(action, {quiet = false} = {}) {
+      if (busy || !current()) return;
+      busy = true;
+      panel.setAttribute('aria-busy','true');
+      try {
+        if (action) await action();
+        if (!current()) return;
+        data = await request(`?offset=${offset}&limit=${pageSize}`);
+        if (offset && !data.items.length) {
+          offset = 0;
+          data = await request(`?offset=0&limit=${pageSize}`);
+        }
+        if (current()) {
+          busy = false;
+          render({preserveOpen:quiet});
+        }
+      } catch (_) {
+        if (!quiet && current()) showStatus('refreshError');
+      } finally {
+        busy = false;
+        panel.removeAttribute('aria-busy');
+      }
+    }
+
+    collect.disabled = clear.disabled = true;
+    panel.addEventListener('toggle', () => { if (panel.open) void run(); });
+    const timer = setInterval(() => {
+      if (panel.open && !document.hidden && !list.querySelector('.writing-memory-editor:not([hidden])')) void run(null, {quiet:true});
+    }, 6000);
+    document.addEventListener('mailai:language-changed', () => {
+      for (const option of days.options) option.textContent = copy('days').replace('{count}', option.value);
+      if (panel.open && current()) render({preserveOpen:Boolean(list.querySelector('.writing-memory-editor:not([hidden])'))});
+    }, {signal:session.signal});
+    dialog.addEventListener('close', () => { clearInterval(timer); session.abort(); }, {once:true});
+
+    panel.addEventListener('click', async event => {
+      const trigger = event.target.closest('button');
+      if (!trigger || trigger.disabled || busy || !data || !current()) return;
+      if (trigger.dataset.writingSource) {
+        const id = Number(trigger.dataset.writingId);
+        const source = trigger.dataset.writingSource;
+        try {
+          const mail = await api(source === 'local' ? `/api/mail/sent/${id}` : `/api/emails/${id}`, {accountId:account.id});
+          if (!current()) return;
+          if (source === 'server' && (mail.status !== 'sent' || mail.remote_missing)) throw new Error('unavailable');
+          dialog.close(); hideSystemView();
+          await openAccountMailbox(account.id, 'sent');
+          if (activeMailAccount()?.id !== account.id || specialMailbox !== 'sent') return;
+          if (source === 'local' && !sentMessages.some(item => Number(item.id) === id)) throw new Error('unavailable');
+          const row = source === 'local' ? mail : {...mail,id:-id,_remote:true,remote_email_id:id,sent_at:mail.date};
+          await selectSpecialMessage(row.id, row);
+        } catch (_) { if (current()) showStatus('refreshError'); }
+        return;
+      }
+      const action = trigger.dataset.writingAction;
+      if (action === 'collect') {
+        await run(() => request('/settings','PUT',{collect:!data.settings.collect,days:Number(days.value),revision:data.settings.revision}));
+        return;
+      }
+      if (action === 'clear') {
+        const confirmed = await mailaiAsk({title:copy('clear'),message:copy('clearHint'),confirmText:copy('confirmClear'),danger:true});
+        if (confirmed && current()) await run(() => request('/clear','POST',{revision:data.settings.revision}));
+        return;
+      }
+      if (action === 'next' || action === 'prev') {
+        offset = Math.max(0, offset + (action === 'next' ? pageSize : -pageSize));
+        await run();
+        return;
+      }
+      const row = trigger.closest('[data-writing-rule]');
+      const rule = renderedItems.find(item => item.id === Number(row?.dataset.writingRule));
+      if (!rule) return;
+      const editor = row.querySelector('.writing-memory-editor');
+      if (action === 'edit') { editor.hidden = false; editor.querySelector('[name="rule_value"]').focus(); return; }
+      if (action === 'cancel') { editor.hidden = true; row.querySelector('[data-writing-action="edit"]').focus(); return; }
+      const payload = {action, revision:rule.revision};
+      if (action === 'save') {
+        payload.value = editor.querySelector('[name="rule_value"]').value;
+        payload.scope = editor.querySelector('[name="rule_scope"]')?.value || rule.scope;
+      }
+      if (action === 'delete') {
+        const label = mailaiT('work.deleteMemory') || MAILAI_UI_COPY['work.deleteMemory'][0];
+        if (!await mailaiAsk({title:label,message:copy('deleteHint'),confirmText:label,danger:true}) || !current()) return;
+      }
+      await run(() => request(`/${rule.id}`,'PUT',payload));
+      panel.querySelector(`[data-writing-rule="${rule.id}"] > summary`)?.focus({preventScroll:true});
+    });
+  };
+})();
+
+;
 /* ---- work-assistant.js ---- */
 /* Work guidance belongs to XiaoYou's existing mail context, never the reader. */
 (() => {
@@ -34475,6 +34876,7 @@ function mailCardDate(value, now = new Date()) {
     dialog.setAttribute('aria-labelledby','work-preferences-title');
     dialog.innerHTML = `<form><header><h2 id="work-preferences-title">${esc(w('settingsTitle'))}</h2><button type="button" data-close aria-label="${esc(w('close'))}">✕</button></header><p class="work-dialog-source">${esc(account.user || account.id)}</p><p>${esc(w('settingsHint'))}</p><label>${esc(w('style'))}<textarea name="style" maxlength="1000" placeholder="${esc(w('stylePlaceholder'))}" disabled></textarea></label><div class="work-memory-edit-actions"><button type="button" data-reload>${esc(w('reload'))}</button>${button('clear','clear')}<button type="submit" disabled>${esc(w('save'))}</button></div><p role="status" data-status>${esc(w('loadingPreferences'))}</p><section class="work-memory-learning"><div class="work-memory-learning-head"><h3>${esc(w('learningTitle'))}</h3><button type="button" data-analyze>${esc(w('analyze'))}</button></div><p>${esc(w('learningHint'))}</p><div data-memory-list></div><footer class="work-memory-pagination"><button type="button" data-page-prev>${esc(w('previous'))}</button><span data-page-label></span><button type="button" data-page-next>${esc(w('next'))}</button></footer></section></form>`;
     document.body.append(dialog);
+    window.mountWritingMemory?.(dialog, account);
     const editor=dialog.querySelector('[name="style"]'), status=dialog.querySelector('[data-status]'), submit=dialog.querySelector('[type="submit"]'), clear=dialog.querySelector('[data-work="clear"]'), reload=dialog.querySelector('[data-reload]'), analyze=dialog.querySelector('[data-analyze]'), list=dialog.querySelector('[data-memory-list]');
     let revision=null, baseStyle='', loading=false, busy=false, filter='adopted', offset=0, pageData=null, ticket=0,learningEnabled=true;
     const active=()=>dialog.isConnected&&dialog.open&&activeMailAccount()?.id===account.id;
@@ -35230,6 +35632,60 @@ function mailCardDate(value, now = new Date()) {
   };
   new MutationObserver(updatePreviewButtons).observe(output,{childList:true,subtree:true});
   new MutationObserver(updatePreviewButtons).observe(document.getElementById('compose-ai-panel'),{attributes:true,attributeFilter:['class']});
+
+  function formatReleaseNotesText(value) {
+    return String(value || '')
+      .replace(/\s*\[发布说明\]\([^\s)]+\)\s*(?:·\s*\[完整版本历史\]\([^\s)]+\))?/g, '')
+      .replace(/\[([^\]]+)\]\([^\s)]+\)/g, '$1')
+      .replace(/\*\*([^*]+)\*\*/g, '$1')
+      .trim();
+  }
+  function renderReleaseNotesList(container, history, {latestVersion = '', truncated = false, releasesUrl = ''} = {}) {
+    const list = document.createElement('div');
+    list.className = 'update-history-list';
+    history.forEach((item, index) => {
+      const row = document.createElement('article');
+      row.className = 'update-history-item';
+      const meta = document.createElement('div');
+      meta.className = 'update-history-meta';
+      const version = document.createElement('strong');
+      version.className = 'update-history-version';
+      version.textContent = `v${String(item.version).replace(/^v/i, '')}`;
+      meta.append(version);
+      if (index === 0 || (latestVersion && String(item.version).replace(/^v/i, '') === String(latestVersion).replace(/^v/i, ''))) {
+        const badge = document.createElement('span');
+        badge.className = 'update-history-badge';
+        mailaiBindUI(badge, 'textContent', () => updateFlowText('latestBadge'));
+        meta.append(badge);
+      }
+      const copy = document.createElement('p');
+      copy.className = 'update-history-copy';
+      copy.textContent = formatReleaseNotesText(item.notes);
+      row.append(meta, copy);
+      list.append(row);
+    });
+    if (truncated) {
+      const more = document.createElement('p');
+      more.className = 'update-history-more';
+      const hint = document.createElement('span');
+      mailaiBindUI(hint, 'textContent', () => updateFlowText('historyMore', history.length));
+      more.append(hint);
+      if (releasesUrl) {
+        more.append(document.createTextNode(' '));
+        const link = document.createElement('a');
+        link.className = 'update-history-more-link';
+        link.href = releasesUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        mailaiBindUI(link, 'textContent', () => updateFlowText('historyLink'));
+        more.append(link);
+      }
+      list.append(more);
+    }
+    container.replaceChildren(list);
+  }
+  window.mailaiFormatReleaseNotesText = formatReleaseNotesText;
+  window.mailaiRenderReleaseNotesList = renderReleaseNotesList;
 })();
 
 ;

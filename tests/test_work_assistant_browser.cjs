@@ -233,17 +233,115 @@ let log=''; fixture.stdout.on('data',chunk=>log+=chunk); fixture.stderr.on('data
     await followupCard.locator('[data-followup-reopen]').click();
     await page.waitForFunction(()=>document.querySelector('#todo-center button[data-todo-view="followups"] small')?.innerText==='1');
     await page.evaluate(()=>closeTodoCenter());
+    assert(!writes.some(url=>url.endsWith('/api/mail/send')||url.endsWith('/api/mail/outbox')),'Conversation and memory never send mail');
+    // Learn two historical edits and only count the third after the actual outbox delivers it.
+    await openSettings();
+    const writing=dialog.locator('.writing-memory-panel');
+    await writing.locator(':scope > summary').click();
+    const collection=writing.locator('[data-writing-action="collect"]');
+    assert.match(await collection.textContent(),/开启/);
+    await collection.click();
+    await writing.getByRole('button',{name:'暂停学习'}).waitFor();
+    const writingAccount=await page.evaluate(()=>activeMailAccount()?.id);
+    assert((await page.request.post(`${base}/fixture/writing-sent/${writingAccount}`)).ok());
+    assert.equal(await page.evaluate(async accountId=>{
+      const sent=await api('/api/mail/sent',{accountId});
+      return sent.filter(row=>row.subject.startsWith('写作习惯样本')).length;
+    },writingAccount),2);
+    const writingMemory=()=>page.evaluate(()=>api('/api/work/writing-memory?limit=30',{accountId:activeMailAccount()?.id}));
+    const isWritingHabit=row=>row.field==='opening'&&row.target==='writing-target@example.test';
+    assert(!(await writingMemory()).items.some(isWritingHabit));
+    await dialog.locator('[data-close]').click();
+    if(await page.locator('#system-view').isVisible())await page.locator('#btn-close-system').click();
+    await page.evaluate(async()=>{await openCompose();toggleComposeAiPanel(true);});
+    const to=page.locator('#compose-to');
+    await page.waitForFunction(()=>document.activeElement?.id==='compose-ai-instruction');
+    await to.fill('writing-target@example.test');await to.blur();
+    assert.equal(await to.inputValue(),'writing-target@example.test');
+    await page.locator('#compose-ai-instruction').fill('准备学习验证草稿');
+    const generation=page.waitForRequest(request=>request.url().endsWith('/api/mail/compose/assist-stream'));
+    await page.locator('#btn-ai-generate').click();
+    assert.equal((await generation).postDataJSON().recipient_fields.to_addr,'writing-target@example.test');
+    await page.locator('#compose-ai-preview').getByText('方案已确认',{exact:false}).waitFor();
+    await page.waitForFunction(()=>!document.querySelector('#btn-ai-replace').disabled);
+    await to.fill('changed@example.test');
+    assert.match(await page.locator('#compose-ai-writing-memory').textContent(),/收件人已变化/);
+    await to.fill('writing-target@example.test');await to.blur();
+    await page.locator('#compose-ai-preview [data-ai-fill="subject"]').click();
+    await page.locator('#btn-ai-replace').click();
+    const draftId=await page.evaluate(async()=>{await saveCurrentDraft({force:true});return draftSession.id;});
+    const stored=await page.evaluate(id=>api(`/api/drafts/${id}`,{accountId:activeMailAccount()?.id}),draftId);
+    assert.match(JSON.parse(stored.writing_sample).body.value,/先前已经多轮讨论/);
+    await page.evaluate(async draft=>{hideCompose();await openCompose(draft);},stored);
+    await page.evaluate(()=>{
+      const body=composeMessageElement();body.innerHTML='<p>陈工，<br>方案已确认，请于周三前反馈意见。</p>';
+      body.dispatchEvent(new InputEvent('input',{bubbles:true}));
+    });
+    await page.waitForFunction(()=>!draftSession.attachmentReads&&!document.getElementById('btn-send-mail').disabled);
+    const sendResult=await page.evaluate(async()=>{
+      const ok=await submitComposeMail(draftPayload(),true);
+      return {ok,message:document.querySelector('#toast .toast-message')?.textContent};
+    });
+    assert(sendResult.ok,`The normal outbox accepts the edited draft (${sendResult.message})`);
+    assert(!(await writingMemory()).items.some(isWritingHabit),'A queued send has no learning evidence');
+    let writingHabit;
+    for(const deadline=Date.now()+25000;!writingHabit&&Date.now()<deadline;){
+      const {items}=await writingMemory();
+      writingHabit=items.find(row=>isWritingHabit(row)&&row.count===3);
+      if(!writingHabit)await new Promise(resolve=>setTimeout(resolve,300));
+    }
+    if(!writingHabit){
+      const diagnostics=await page.evaluate(async()=>{
+        const accountId=activeMailAccount()?.id;
+        const outbox=await api('/api/mail/outbox',{accountId});
+        const sent=await api('/api/mail/sent',{accountId});
+        return {outbox,sent:sent.map(({subject,status})=>({subject,status}))};
+      });
+      assert.fail(`A confirmed third thread should produce a habit\n${JSON.stringify(await writingMemory())}\n${JSON.stringify(diagnostics)}\n${log.slice(-2500)}`);
+    }
+    assert.equal(writingHabit.status,'adopted','Stable habits become active without an approval call');
+    await openSettings();await writing.locator(':scope > summary').click();
+    const habit=writing.locator(`[data-writing-rule="${writingHabit.id}"]`);
+    await habit.waitFor({timeout:5000}).catch(async error=>{throw new Error(`${error.message}\nMemory panel: ${await writing.innerText()}`);});
+    assert.equal(await writing.locator('[data-writing-action="approve"]').count(),0);
+    assert(!(await habit.locator('[data-writing-action="pause"]').isVisible()));
+    await habit.locator(':scope > summary').click();
+    await habit.locator('.writing-memory-comparison > summary').first().click();
+    assert.match(await habit.locator('del').first().textContent(),/多轮讨论/);
+    assert.equal(await habit.getByText('测试写作习惯',{exact:true}).count(),1);
+    await habit.locator('[data-writing-action="pause"]').waitFor();
+    await dialog.locator('[data-close]').click();
+    if(await page.locator('#system-view').isVisible())await page.locator('#btn-close-system').click();
+    await page.evaluate(async()=>{await openCompose();toggleComposeAiPanel(true);});
+    await page.waitForFunction(()=>document.activeElement?.id==='compose-ai-instruction');
+    await to.fill('writing-target@example.test');await to.blur();
+    await page.locator('#compose-ai-instruction').fill('准备学习验证草稿');
+    await page.locator('#btn-ai-generate').click();
+    await page.locator('#compose-ai-writing-memory').getByText('先给结论',{exact:false}).waitFor();
+    await page.evaluate(()=>hideCompose());
     // Settings memory stays readable across themes, languages, windows and 200% text.
     fs.mkdirSync('output/work-assistant',{recursive:true});
     let layouts=0;
+    const surfaces=new Map();
     for(const theme of ['','theme_monochrome','theme_baowu'])for(const mode of ['light','dark'])for(const language of ['zh-CN','en']){
       await page.setViewportSize({width:1440,height:1000});
       await page.evaluate(({theme,mode,language})=>{document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1');document.documentElement.dataset.rewardTheme=theme;applyTheme(mode);setI18nLanguage(language);},{theme,mode,language});
       await openSettings();
       if(language==='en')assert.equal(await dialog.locator('h2').textContent(),'XiaoYou memory');
+      await writing.locator(':scope > summary').click();
+      await writing.getByRole('button',{name:language==='en'?'Pause learning':'暂停学习'}).waitFor();
       for(const [width,height,scale]of[[390,844,1],[390,844,2],[780,844,1.3],[780,844,2],[1440,1000,1],[1440,1000,1.3],[1440,1000,2]]){
-        await page.setViewportSize({width,height});await page.evaluate(scale=>{document.body.style.zoom=String(scale);document.documentElement.style.setProperty('--fz',String(scale));},scale);
-        const bounds=await dialog.evaluate(n=>({top:n.getBoundingClientRect().top,bottom:n.getBoundingClientRect().bottom,width:n.getBoundingClientRect().width,vw:innerWidth,vh:innerHeight,overflow:n.scrollWidth-n.clientWidth}));
+        await page.setViewportSize({width,height});
+        const bounds=await dialog.evaluate((n,{theme,mode,scale})=>{
+          document.body.style.zoom=String(scale);document.documentElement.style.setProperty('--fz',String(scale));
+          if(theme)document.documentElement.dataset.rewardTheme=theme;
+          else document.documentElement.removeAttribute('data-reward-theme');
+          applyTheme(mode);
+          const rect=n.getBoundingClientRect();
+          return {top:rect.top,bottom:rect.bottom,width:rect.width,vw:innerWidth,vh:innerHeight,overflow:n.scrollWidth-n.clientWidth,
+            surface:getComputedStyle(n).backgroundColor};
+        },{theme,mode,scale});
+        surfaces.set(`${theme}/${mode}`,bounds.surface);
         assert(bounds.top>=-1&&bounds.bottom<=bounds.vh+1&&bounds.width<=bounds.vw&&bounds.overflow<=2,JSON.stringify({theme,mode,language,width,scale,bounds}));layouts++;
       }
       await page.evaluate(()=>{document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1');});
@@ -251,8 +349,9 @@ let log=''; fixture.stdout.on('data',chunk=>log+=chunk); fixture.stderr.on('data
       await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'});
     }
     assert.equal(layouts,84);
-    assert(!writes.some(url=>url.endsWith('/api/mail/send')||url.endsWith('/api/mail/outbox')),'Conversation and memory never send mail');
+    assert.equal(new Set(surfaces.values()).size,6,JSON.stringify([...surfaces]));
+    assert.equal(writes.filter(url=>url.endsWith('/api/mail/send')||url.endsWith('/api/mail/outbox')).length,1,'Only the explicit send queued mail');
     assert.deepEqual(errors,[]);
-    console.log('PASS conversational XiaoYou: clean reader, scoped discussion, automatic matter/personal memory, real idle learning, provenance, protected edits/deletion, review, failure retry and 84 layouts');
+    console.log('PASS XiaoYou conversation and sent-mail learning: background adoption, actual queued send, draft attribution, evidence and 84 layouts');
   }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;}).finally(()=>fixture.kill('SIGTERM'));

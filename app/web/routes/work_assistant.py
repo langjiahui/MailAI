@@ -1,7 +1,8 @@
 """Work assistance uses the same account middleware as mail and compose."""
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel, Field
-from ... import work_assistant, work_memory
+from typing import Literal
+from ... import work_assistant, work_memory, writing_memory
 
 router = APIRouter()
 
@@ -49,6 +50,17 @@ class MemoryEditRequest(BaseModel):
 class MemoryDeleteRequest(BaseModel):
     revision: int = Field(ge=1)
     pref_revision: int = Field(ge=0)
+
+
+class WritingCollectionRequest(MemoryActionRequest):
+    collect: bool
+    days: Literal[30, 90, 180] = 90
+
+
+class WritingRuleRequest(MemoryActionRequest):
+    action: Literal['approve', 'resume', 'pause', 'save', 'delete']
+    value: str | None = Field(None, max_length=40)
+    scope: Literal['account', 'role', 'contact'] | None = None
 
 
 def checked(action, *args, **kwargs):
@@ -151,3 +163,31 @@ def memory_edit(candidate_id: int,payload: MemoryEditRequest):
 @router.delete('/api/work/memory/{candidate_id}')
 def memory_delete(candidate_id: int,payload: MemoryDeleteRequest):
     return checked(work_memory.remove,candidate_id,payload.revision,payload.pref_revision)
+
+
+@router.get('/api/work/writing-memory')
+def writing_memories(offset: int = Query(0, ge=0), limit: int = Query(12, ge=1, le=30)):
+    return writing_memory.listing(offset, limit)
+
+
+@router.put('/api/work/writing-memory/settings')
+def writing_collection(payload: WritingCollectionRequest):
+    result = writing_memory.configure(payload.collect, payload.days, payload.revision)
+    if result is None:
+        raise HTTPException(409, detail={'code': 'writing_memory_conflict'})
+    return result
+
+
+@router.post('/api/work/writing-memory/clear')
+def writing_clear(payload: MemoryActionRequest):
+    result = writing_memory.clear(payload.revision)
+    if result is None:
+        raise HTTPException(409, detail={'code': 'writing_memory_conflict'})
+    return result
+
+
+@router.put('/api/work/writing-memory/{rule_id}')
+def writing_rule(rule_id: int, payload: WritingRuleRequest):
+    if not writing_memory.update(rule_id, payload.revision, payload.action, payload.value, payload.scope):
+        raise HTTPException(409, detail={'code': 'writing_memory_conflict'})
+    return {'ok': True}

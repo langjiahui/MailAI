@@ -17,7 +17,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app import release_update
-from scripts.create_release_manifest import release_body, release_notes_from_readme
+from scripts.create_release_manifest import release_body, release_history_from_docs, release_notes_from_readme
 
 
 class Response(io.BytesIO):
@@ -439,6 +439,42 @@ def test_intel_mac_uses_its_pkg_and_never_selects_the_arm_app():
         else:
             raise AssertionError("Intel updater accepted an app ZIP as a PKG")
 
+def test_spanned_release_history_filters_versions_and_marks_truncation():
+    docs = Path(__file__).resolve().parents[1] / "docs"
+    readme_notes = release_notes_from_readme(Path(__file__).resolve().parents[1] / "README.md")
+    current_ver = release_update.current_version()
+    history = release_history_from_docs(docs, current_ver, current_notes=readme_notes, limit=15)
+    assert history and history[0]["version"] == current_ver
+    assert "[发布说明]" not in history[0]["notes"] and "[完整版本历史]" not in history[0]["notes"]
+    assert all(release_update._version_tuple(item["version"]) <= release_update._version_tuple(current_ver) for item in history)
+
+    sample = {
+        **manifest("4.9.4"),
+        "release_url": "https://github.com/langjiahui/MailAI/releases/tag/v4.9.4",
+        "history": [
+            {"version": "4.9.4", "notes": "Sent action bar adapts to pane width"},
+            {"version": "4.9.3", "notes": "Hover icon motion on sent actions"},
+            {"version": "4.9.2", "notes": "Move secondary actions under More"},
+            {"version": "4.9.0", "notes": "Intel Mac installers and background sync"},
+        ],
+    }
+    with patch.object(release_update, "FROZEN", True), patch.object(release_update, "current_version", return_value="4.9.1"):
+        evaluated = release_update.evaluate_manifest(sample, device="windows-x64")
+        assert [item["version"] for item in evaluated["history"]] == ["4.9.4", "4.9.3", "4.9.2"]
+        assert not evaluated["history_truncated"]
+        assert evaluated["releases_url"] == release_update.GITHUB_RELEASE_URL
+
+    with patch.object(release_update, "FROZEN", True), patch.object(release_update, "current_version", return_value="4.8.0"):
+        truncated = release_update.evaluate_manifest(
+            {**sample, "release_url": "https://atomgit.com/langjiahui2011/MailAI/releases"},
+            device="windows-x64",
+        )
+        assert [item["version"] for item in truncated["history"]] == ["4.9.4", "4.9.3", "4.9.2", "4.9.0"]
+        assert truncated["history_truncated"]
+        assert truncated["releases_url"] == release_update.update_mirror.ATOM_RELEASES
+
+
 if __name__ == "__main__":
+    test_spanned_release_history_filters_versions_and_marks_truncation()
     test_intel_mac_uses_its_pkg_and_never_selects_the_arm_app()
     main()
