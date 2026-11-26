@@ -197,7 +197,10 @@
     preview = null;
     find('#mail-output-text-preview').textContent = '';
     release(old);
-    if (old?.returnFocus?.isConnected) old.returnFocus.focus({preventScroll:true});
+    if (old?.trigger?.isConnected) {
+      const target = old.trigger.closest('details')?.querySelector('summary') || old.trigger;
+      target.focus({preventScroll:true});
+    }
   }
   function close() { dialog.close(); clearClosedRun(); }
   dialog.addEventListener('close', clearClosedRun);
@@ -270,7 +273,7 @@
     if (!id || id<=0 || !accountId) return;
     if (dialog.open) return;
     clearClosedRun();
-    const scope = {id,accountId,source,mode,busy:true,data:null,file:null,controller:new AbortController(),scrollCleanups:[],previewReady:false,returnFocus:reference.returnFocus};
+    const scope = {id,accountId,source,mode,busy:true,data:null,file:null,controller:new AbortController(),scrollCleanups:[],previewReady:false,trigger:reference.trigger};
     run=scope;format.querySelector('[value="pdf"]').checked=true;status.textContent=t('working');paint();dialog.showModal();
     installScrollbar(find('#mail-output-text-preview'), scope, find('#mail-output-text-host'));
     try {
@@ -367,7 +370,7 @@
     menu?.removeAttribute('open');
     open(trigger.dataset.mailOutput, {
       id:trigger.dataset.mailOutputId, source:trigger.dataset.mailOutputSource,
-      accountId:trigger.dataset.mailOutputAccount, returnFocus:menu?.querySelector('summary') || trigger,
+      accountId:trigger.dataset.mailOutputAccount, trigger,
     });
   });
   window.mailaiMailOutput={open};

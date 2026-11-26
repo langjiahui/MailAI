@@ -17,6 +17,7 @@
     .reading-start-actions > button,
     .reading-actions :is(.reading-reply-group,.reading-work-actions,.reading-ai-group) > button,
     .special-mail-detail[data-mailbox="sent"] .special-mail-actions > :is(#btn-edit-special,#btn-sent-ai-followup,#btn-sent-schedule-followup),
+    .special-mail-direct-actions button,
     .reading-more-panel button,
     #assistant-panel :is(.assistant-head-actions > button,.assistant-quick > button,#assistant-send)
   ):hover:not(:disabled,[aria-disabled="true"],[aria-busy="true"]) :where(svg:not(:has(> .hover-icon-part)),svg > .hover-icon-part),
@@ -77,14 +78,14 @@
     transform-box:view-box;
   }
   .reading-more-panel [data-reading-action="image"] { --toolbar-icon-peak:rotate(-10deg) scale(1.12); }
-  .reading-more-panel [data-mail-output="print"] .hover-icon-part { --toolbar-icon-peak:translateY(2.4px); }
-  .reading-more-panel [data-mail-output="share"] { --toolbar-icon-peak:rotate(-14deg) scale(1.13); }
+  [data-mail-output="print"] .hover-icon-part { --toolbar-icon-peak:translateY(2.4px); }
+  [data-mail-output="share"] { --toolbar-icon-peak:rotate(-14deg) scale(1.13); }
   .reading-more-panel .reading-decision-actions button { --toolbar-icon-peak:scale(1.17); }
   .reading-more-panel .reading-decision-actions .hover-icon-part {
     --toolbar-icon-peak:skewY(-12deg);
     transform-origin:left center;
   }
-  .reading-more-panel [data-reading-action="delete-current"] .hover-icon-part { --toolbar-icon-peak:translateY(-1.8px) rotate(-12deg); }
+  :is(.reading-more-panel [data-reading-action="delete-current"],.special-mail-actions .special-delete) .hover-icon-part { --toolbar-icon-peak:translateY(-1.8px) rotate(-12deg); }
 
   #assistant-new { --toolbar-icon-peak:scale(1.23); }
   #assistant-history { --toolbar-icon-peak:rotate(-35deg); }
