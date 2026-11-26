@@ -112,7 +112,7 @@ async function bulkCollectionCase() {
   assert.equal(offered.length, 1, 'A standalone action should immediately offer undo');
 
   const bulk = vm.createContext(i18nContext({selectedMailIds:new Set(Array.from({length:205}, (_,i) => i + 1)),
-    unifiedMailbox:false, bulkOperationActive:false, currentFilter:{status:'inbox'},
+    unifiedMailbox:false, specialMailbox:'', bulkOperationActive:false, currentFilter:{status:'inbox'},
     activeMailAccount:() => ({id:'a'}), setBulkOperationState(){}, setLocalEmailReadState(){},
     api:async (url, options) => {
       const payload = JSON.parse(options.body);

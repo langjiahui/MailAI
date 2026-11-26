@@ -74,7 +74,7 @@
           <label><span data-i18n="writingMemory.history">${esc(copy('history'))}</span><select data-writing-days>
             ${[30,90,180].map(days => `<option value="${days}" ${days === 90 ? 'selected' : ''}>${esc(copy('days').replace('{count}', days))}</option>`).join('')}
           </select></label>
-          ${button('collect','enable')}${button('clear','clear')}
+          ${button('collect','pauseCollection')}${button('clear','clear')}
         </div>
       </div>
       <div data-writing-rules></div>
@@ -106,13 +106,15 @@
     function render({preserveOpen = true} = {}) {
       if (!data) return;
       const settings = data.settings;
-      mailaiBindUI(collect, 'textContent', () => copy(settings.collect ? 'pauseCollection' : settings.initialized ? 'resumeCollection' : 'enable'));
-      days.closest('label').hidden = settings.initialized;
-      days.disabled = !settings.enabled;
+      mailaiBindUI(collect, 'textContent', () => copy(settings.collect ? 'pauseCollection' : 'resumeCollection'));
+      if (settings.days) days.value = String(settings.days);
+      days.closest('label').hidden = !settings.initialized || Boolean(settings.cleared);
+      days.disabled = busy || !settings.enabled || !settings.collect;
+      collect.hidden = !settings.initialized;
       clear.hidden = !settings.initialized;
       collect.disabled = busy || !settings.enabled;
       clear.disabled = busy;
-      showStatus(settings.enabled ? (settings.initialized ? 'observed' : '') : 'masterOff', {count:data.observed});
+      showStatus(!settings.enabled ? 'masterOff' : settings.initialized ? 'observed' : 'waitingModel', {count:data.observed});
       footer.hidden = data.total <= pageSize;
       footer.querySelector('[data-writing-page]').textContent = data.total ? `${offset + 1}–${offset + data.items.length} / ${data.total}` : '';
       footer.querySelector('[data-writing-action="prev"]').disabled = busy || !offset;
@@ -152,6 +154,10 @@
     }
 
     collect.disabled = clear.disabled = true;
+    days.addEventListener('change', () => {
+      if (!data || busy || !current()) return;
+      void run(() => request('/settings','PUT',{collect:data.settings.collect,days:Number(days.value),revision:data.settings.revision}));
+    });
     panel.addEventListener('toggle', () => { if (panel.open) void run(); });
     const timer = setInterval(() => {
       if (panel.open && !document.hidden && !list.querySelector('.writing-memory-editor:not([hidden])')) void run(null, {quiet:true});

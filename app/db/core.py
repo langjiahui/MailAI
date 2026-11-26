@@ -607,6 +607,8 @@ def _run_migrations(c):
     for table in ('emails', 'sent_messages'):
         for column in ('message_id', 'in_reply_to'):
             c.execute(f'CREATE INDEX IF NOT EXISTS idx_{table}_progress_{column} ON {table}(lower({column}))')
+    c.execute("""CREATE INDEX IF NOT EXISTS idx_emails_sent_trash_message ON emails(lower(trim(message_id)))
+        WHERE status IN ('sent','trash') OR pending_action LIKE 'trash%'""")
     from ..writing_memory import initialize as initialize_writing_memory
     initialize_writing_memory(c)
     c.execute('CREATE INDEX IF NOT EXISTS idx_emails_progress_thread ON emails(lower(thread_id))')

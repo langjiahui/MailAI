@@ -21,6 +21,7 @@ SLOW_BATCH_SECONDS = .12
 FAST_BATCH_SECONDS = .06
 RECOVERY_BATCHES = 3
 HISTORY_DAYS = (30, 90, 180)
+DEFAULT_HISTORY_DAYS = 90
 _AUTO_SUBJECT = re.compile(r'^(?:自动回复|自动通知|外出回复|退信|automatic reply|auto.?reply|out of office|delivery status notification)', re.I)
 _FIELDS = dict(local='sent_messages', server='emails')
 _DATES = dict(local='sent_at', server='date')
@@ -80,6 +81,8 @@ def initialize(c):
         c.execute('UPDATE writing_memory_state SET observed=(SELECT COUNT(*) FROM writing_memory_samples WHERE message_key IS NOT NULL)')
     if 'batch_version' not in columns:
         c.execute('ALTER TABLE writing_memory_state ADD COLUMN batch_version INTEGER NOT NULL DEFAULT 0')
+    if 'history_days' not in columns:
+        c.execute(f'ALTER TABLE writing_memory_state ADD COLUMN history_days INTEGER NOT NULL DEFAULT {DEFAULT_HISTORY_DAYS}')
     c.execute('''CREATE TABLE IF NOT EXISTS writing_memory_cursor (
         source TEXT PRIMARY KEY, before_date TEXT, before_id INTEGER, done INTEGER NOT NULL DEFAULT 0)''')
     c.execute('''CREATE TABLE IF NOT EXISTS writing_memory_queue (
@@ -105,16 +108,34 @@ def initialize(c):
                 END''')
 
 
+def _model_ready():
+    from .llm import client
+    return client.available()
+
+
 def _state(c):
     return c.execute('''SELECT s.*,m.enabled,m.revision AS memory_revision FROM writing_memory_state s
         CROSS JOIN work_learning_state m WHERE s.id=1 AND m.id=1''').fetchone()
 
 
+def _auto_enable_in_tx(c):
+    state = _state(c)
+    if state['enabled'] and not state['since'] and _model_ready():
+        days = state['history_days'] if state['history_days'] in HISTORY_DAYS else DEFAULT_HISTORY_DAYS
+        since = (datetime.now() - timedelta(days=days)).date().isoformat()
+        c.execute('''UPDATE writing_memory_state SET collect=1,since=?,epoch=?,history_days=?,revision=revision+1
+            WHERE id=1 AND since='' ''', (since, uuid4().hex, days))
+        state = _state(c)
+    return state
+
+
 def _public_settings(state):
-    return dict(collect=bool(state['collect']), initialized=bool(state['since']), enabled=bool(state['enabled']), revision=state['revision'])
+    days = state['history_days'] if state['history_days'] in HISTORY_DAYS else DEFAULT_HISTORY_DAYS
+    return dict(collect=bool(state['collect']), initialized=bool(state['since']), enabled=bool(state['enabled']),
+                model_ready=_model_ready(), days=days, cleared='T' in (state['since'] or ''), revision=state['revision'])
 
 
-def configure(collect, days, revision):
+def configure(collect, days=DEFAULT_HISTORY_DAYS, revision=0):
     if days not in HISTORY_DAYS:
         return None
     with db.conn() as c:
@@ -122,9 +143,19 @@ def configure(collect, days, revision):
         state = _state(c)
         if state['revision'] != revision or collect and not state['enabled']:
             return None
-        since = state['since'] or ((datetime.now() - timedelta(days=days)).date().isoformat() if collect else '')
-        c.execute('UPDATE writing_memory_state SET collect=?,since=?,epoch=?,revision=revision+1 WHERE id=1',
-                  (collect, since, uuid4().hex))
+        window_since = (datetime.now() - timedelta(days=days)).date().isoformat()
+        if not state['since']:
+            since = window_since if collect else ''
+        elif (len(state['since']) == 10 and days != state['history_days']
+              and not state['local_floor'] and not state['server_floor']):
+            since = window_since
+            if days > state['history_days']:
+                c.execute('UPDATE writing_memory_cursor SET done=0')
+        else:
+            since = state['since']
+        epoch_val = state['epoch'] if collect and state['collect'] and state['epoch'] else uuid4().hex
+        c.execute('''UPDATE writing_memory_state SET collect=?,since=?,epoch=?,history_days=?,revision=revision+1
+            WHERE id=1''', (collect, since, epoch_val, days))
         if not collect:
             _drop_baselines(c)
         return _public_settings(_state(c))
@@ -157,9 +188,17 @@ def epoch():
     try:
         with _connection() as c:
             state = _state(c)
-            return state['epoch'] if state['collect'] and state['enabled'] else ''
+            if state['collect'] and state['enabled']:
+                return state['epoch']
+            need_init = bool(state['enabled'] and not state['since'] and _model_ready())
+        if need_init:
+            with _connection(read_only=False) as c:
+                c.execute('BEGIN IMMEDIATE')
+                state = _auto_enable_in_tx(c)
+                return state['epoch'] if state['collect'] and state['enabled'] else ''
     except sqlite3.Error:
         return ''
+    return ''
 
 
 def encode_baseline(c, sample):
@@ -365,6 +404,19 @@ def process_batch(commit_lease=None, *, budget=BATCH):
     path = Path(config.DB_PATH)
     identity = path.stat()
     with _connection(path) as c:
+        initial = dict(_state(c))
+    if initial['enabled'] and not initial['since'] and _model_ready():
+        with (commit_lease() if commit_lease else nullcontext(True)) as ready:
+            if not ready:
+                return 0
+            current_file = path.stat()
+            if (identity.st_dev, identity.st_ino) != (current_file.st_dev, current_file.st_ino):
+                return 0
+            with _connection(path, read_only=False) as c:
+                c.execute('BEGIN IMMEDIATE')
+                _auto_enable_in_tx(c)
+        identity = path.stat()
+    with _connection(path) as c:
         state = dict(_state(c))
         if not state['collect'] or not state['enabled']:
             return 0
@@ -501,6 +553,9 @@ def run_due():
 def listing(offset, limit):
     with db.conn() as c:
         state = _state(c)
+        if state['enabled'] and not state['since'] and _model_ready():
+            c.execute('BEGIN IMMEDIATE')
+            state = _auto_enable_in_tx(c)
         total = c.execute("SELECT COUNT(*) FROM writing_memory_rules WHERE status<>'deleted'").fetchone()[0]
         items = [dict(row) for row in c.execute('''SELECT * FROM writing_memory_rules WHERE status<>'deleted'
             ORDER BY id DESC LIMIT ? OFFSET ?''', (limit, offset))]

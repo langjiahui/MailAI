@@ -1,5 +1,6 @@
 """审计日志与自动处置记录。"""
 import json
+from contextlib import nullcontext
 from datetime import datetime
 
 from .core import conn
@@ -7,9 +8,9 @@ from .core import conn
 
 def add_audit_log(email_id: int | None, action: str, old_status: str | None = None,
                   new_status: str | None = None, actor: str = "system",
-                  reason: str = "", meta: dict | None = None):
+                  reason: str = "", meta: dict | None = None, *, connection=None):
     now = datetime.now().isoformat(timespec="seconds")
-    with conn() as c:
+    with (nullcontext(connection) if connection is not None else conn()) as c:
         c.execute(
             "INSERT INTO audit_logs(email_id, action, old_status, new_status, actor, reason, meta, created_at) "
             "VALUES(?,?,?,?,?,?,?,?)",

@@ -41,19 +41,28 @@ def version(value):
     return tuple(map(int, value.split('.')))
 
 
-def next_version(base, change):
-    major, minor, patch = version(base)
-    if change == 'major':
-        major, minor, patch = major + 1, 0, 0
-    elif change == 'minor':
-        minor, patch = minor + 1, 0
-    elif change == 'patch':
-        patch += 1
-    else:
-        raise ValueError('A release classification is required')
-    if minor >= 10 or patch >= 10:
-        major, minor, patch = major + 1, 0, 0
-    return f'{major}.{minor}.{patch}'
+def next_version(base, change=None, *, year=None, month=None):
+    b_major, b_minor, b_patch = version(base)
+    now = datetime.now(timezone.utc)
+    target_year = now.year if year is None else int(year)
+    target_month = now.month if month is None else int(month)
+    if not (2026 <= target_year <= 9999 and 1 <= target_month <= 12):
+        raise ValueError('Target CalVer year or month is out of range')
+    if b_major >= 2026:
+        if (target_year, target_month) < (b_major, b_minor):
+            raise ValueError('Target CalVer month cannot precede baseline')
+        if (target_year, target_month) == (b_major, b_minor):
+            return f'{target_year}.{target_month}.{b_patch + 1}'
+    return f'{target_year}.{target_month}.0'
+
+
+def valid_calver_months(now=None):
+    if now is not None:
+        return {(now.year, now.month)}
+    return {
+        (dt.year, dt.month)
+        for dt in (datetime.now().astimezone(), datetime.now(timezone.utc))
+    }
 
 
 def formal_releases(api):
@@ -175,8 +184,11 @@ class Coordinator:
         if prior is None:
             raise ValueError('Cannot determine the last formal desktop release')
         baseline = prior['tag_name'][1:]
-        if next_version(baseline, change) != target:
-            raise ValueError('Target version does not match the chosen release classification')
+        t_year, t_month, _ = version(target)
+        if (t_year, t_month) not in valid_calver_months():
+            raise ValueError('Target CalVer year/month does not match the current calendar month')
+        if next_version(baseline, change, year=t_year, month=t_month) != target:
+            raise ValueError('Target version does not match the next CalVer release sequence')
         if self.api.file('VERSION', head).strip() != target:
             raise ValueError('Candidate VERSION differs from the release target')
         if f'当前版本：**v{target}**' not in self.api.file('README.md', head):

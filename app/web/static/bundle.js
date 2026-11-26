@@ -1852,13 +1852,14 @@ const MAILAI_UI_COPY = {
   "model.visionFailed": ["图片识别不可用，请关闭图片识别或更换模型后重试。", "Image recognition is unavailable. Disable it or change the model and try again."],
   "work.stylePlaceholder": ["例如：结论在前，语气自然，避免客套落款。", "For example: lead with the conclusion, use a natural tone, and avoid formal sign-offs."],
   "writingMemory.title": ["从已发送邮件学习", "Learn from sent mail"],
-  "writingMemory.hint": ["在本机后台学习已发邮件里的写法，稳定后按收件人自动用于小邮帮写。", "XiaoYou learns from sent mail locally and automatically applies established habits by recipient."],
+  "writingMemory.hint": ["连接 AI 模型后自动在本机后台学习已发邮件里的写法，稳定后按收件人自动用于小邮帮写。", "Once an AI model is connected, XiaoYou automatically learns from sent mail locally and applies established habits by recipient."],
   "writingMemory.enable": ["开启后台学习", "Turn on background learning"],
   "writingMemory.pauseCollection": ["暂停学习", "Pause learning"],
   "writingMemory.resumeCollection": ["继续学习", "Resume learning"],
-  "writingMemory.history": ["首次整理范围", "Initial history"],
+  "writingMemory.history": ["学习范围", "History window"],
   "writingMemory.days": ["最近 {count} 天", "Past {count} days"],
   "writingMemory.observed": ["已分析 {count} 封已发送邮件", "{count} sent messages analyzed"],
+  "writingMemory.waitingModel": ["连接 AI 模型后将自动开始学习。", "Learning starts automatically once an AI model is connected."],
   "writingMemory.masterOff": ["启用长期记忆后可使用此功能。", "Turn on lasting memory to use this feature."],
   "writingMemory.empty": ["学到的稳定习惯会显示在这里。", "Established writing habits appear here."],
   "writingMemory.refreshError": ["记忆暂时无法更新，请刷新后重试。", "Memory could not be updated. Refresh and try again."],
@@ -24151,7 +24152,10 @@ function mailListSignature(emails) {
 function renderEmailList(emails, {silent = false} = {}) {
   emails = window.mailaiProductivityList?.(emails) || emails;
   const container = document.getElementById('email-list');
-  renderedEmailIds = emails.filter(item => !item._kind).map(item => Number(item.id));
+  renderedEmailIds = emails.filter(item => specialMailbox === 'sent'
+    ? !item._outbox && ['sent','accepted'].includes(item.status) && Number.isSafeInteger(Number(item.id)) && Number(item.id) !== 0
+    : !item._kind).map(item => Number(item.id));
+  const selectableIds = new Set(renderedEmailIds);
   const visibleEmails = emails.slice(0, mailRenderLimit);
   reconcileReadingPane(emails);
   const visibleIds = new Set(renderedEmailIds);
@@ -24224,20 +24228,22 @@ function renderEmailList(emails, {silent = false} = {}) {
         return;
       }
       const id = specialMailbox ? parseRowId(item.dataset.id) : Number(item.dataset.id);
-      if (!specialMailbox && !unifiedMailbox && (event.metaKey || event.ctrlKey || event.shiftKey)) {
+      if (specialMailbox === 'sent' && bulkOperationActive) return;
+      if (canSelectMailboxMail() && (event.metaKey || event.ctrlKey || event.shiftKey)) {
         event.preventDefault();
+        if (!selectableIds.has(id)) return;
         if (event.shiftKey) selectMailRange(id, event.metaKey || event.ctrlKey);
         else toggleMailSelection(id);
         return;
       }
       if (selectedMailIds.size || mailSelectionExplicit) clearMailSelection();
-      if (!specialMailbox && !unifiedMailbox) selectionAnchorId = id;
+      if (canSelectMailboxMail()) selectionAnchorId = selectableIds.has(id) ? id : null;
       specialMailbox ? selectSpecialMessage(id) : unifiedMailbox ? selectUnifiedEmail(id, item.dataset.accountId) : selectEmail(id);
     });
     item.addEventListener('contextmenu', event => {
-      if (specialMailbox || unifiedMailbox) return;
-      event.preventDefault();
       const id = Number(item.dataset.id);
+      if (!canSelectMailboxMail() || !selectableIds.has(id) || bulkOperationActive) return;
+      event.preventDefault();
       if (!selectedMailIds.has(id)) {
         if (!(event.metaKey || event.ctrlKey)) selectedMailIds.clear();
         selectedMailIds.add(id);
@@ -24257,13 +24263,14 @@ function renderEmailList(emails, {silent = false} = {}) {
       }
       if (event.key === 'Enter') {
         event.preventDefault();
-        if (!specialMailbox && !unifiedMailbox) selectionAnchorId = id;
+        if (specialMailbox === 'sent' && bulkOperationActive) return;
+        if (canSelectMailboxMail()) selectionAnchorId = selectableIds.has(id) ? id : null;
         specialMailbox ? selectSpecialMessage(id) : unifiedMailbox ? selectUnifiedEmail(id, item.dataset.accountId) : selectEmail(id);
       } else if (event.key === ' ') {
-        if (specialMailbox || unifiedMailbox) return;
+        if (!canSelectMailboxMail() || !selectableIds.has(id)) return;
         event.preventDefault();
         event.shiftKey ? selectMailRange(id, event.metaKey || event.ctrlKey) : toggleMailSelection(id);
-      } else if (event.key === 'F10' && event.shiftKey && !specialMailbox && !unifiedMailbox) {
+      } else if (event.key === 'F10' && event.shiftKey && canSelectMailboxMail() && selectableIds.has(id) && !bulkOperationActive) {
         event.preventDefault();
         const rect = item.getBoundingClientRect();
         if (!selectedMailIds.has(id)) {
@@ -24656,7 +24663,7 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
   if (button) {
     const accountId = activeMailAccount()?.id;
     button.onclick = async () => {
-      if (button.disabled) return;
+      if (button.disabled || bulkOperationActive) return;
       if (more.contains(button)) {
         more.open = false;
         more.querySelector('summary').focus({preventScroll:true});
@@ -24665,45 +24672,12 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
       try {
         const result = await api('/api/mail/sent/' + row.id, {accountId, method:'DELETE'});
         if (result.failed?.length) throw new Error(result.failed[0].error || mailaiText('删除失败'));
-        if (activeMailAccount()?.id === accountId) {
-          // Commit the successful deletion locally before any slower refresh.
-          // Invalidate mailbox cache and in-flight reads so stale rows cannot reappear.
-          ++mailLoadRevision;
-          window.mailaiMailboxStore?.invalidate(accountId);
-          sentMessages = sentMessages.filter(item => String(item.id) !== String(row.id));
-          if (Array.isArray(searchResults)) searchResults = searchResults.filter(item => String(item.id) !== String(row.id));
-          if (button.isConnected && pane.contains(button)) resetReadingPane();
-          if (specialMailbox === 'sent') renderSpecialMailbox();
-          updateSidebar();
-          void loadData({silent:true, requireFresh:true});
-        }
+        if (removeTrashedSentRows([row.id], accountId)) void loadData({silent:true, requireFresh:true});
         toast(mailaiText('已发送邮件已移入已删除，稍后同步服务器'), 'success');
       } catch (error) { toast(mailaiSystemMessage(error.message), 'error'); }
       finally { button.disabled = false; }
     };
   }
-}
-
-function syncBulkSelectionVisuals() {
-  if (selectedMailIds.size) mailSelectionExplicit = true;
-  const revision = ++bulkVisualRevision;
-  const items = [...document.querySelectorAll('.email-item')];
-  let cursor = 0;
-  const paint = () => {
-    if (revision !== bulkVisualRevision) return;
-    const end = Math.min(cursor + 80, items.length);
-    for (; cursor < end; cursor += 1) {
-      const item = items[cursor];
-      const chosen = selectedMailIds.has(Number(item.dataset.id));
-      item.classList.toggle('bulk-selected', chosen);
-      item.setAttribute('aria-selected', chosen ? 'true' : 'false');
-    }
-    if (cursor < items.length) {
-      (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : setTimeout)(paint);
-    }
-  };
-  paint();
-  updateBulkToolbar();
 }
 
 function clearMailSelection() {
@@ -24719,10 +24693,11 @@ function toggleMailSelection(id) {
   if (bulkOperationActive) return;
   // A normal click is the initial selection. Seed it only once per selection
   // session; an explicitly emptied selection must remain empty.
+  const initial = selectionAnchorId ?? Number(selectedEmailId);
   if (!mailSelectionExplicit && !selectedMailIds.size &&
-      renderedEmailIds.includes(Number(selectedEmailId)) &&
+      renderedEmailIds.includes(initial) &&
       (!selectedEmailAccountId || selectedEmailAccountId === activeMailAccount()?.id)) {
-    selectedMailIds.add(Number(selectedEmailId));
+    selectedMailIds.add(initial);
   }
   mailSelectionExplicit = true;
   if (selectedMailIds.has(id)) selectedMailIds.delete(id);
@@ -24748,11 +24723,15 @@ function selectMailRange(id, additive = false) {
 
 function selectAllVisibleMail() {
   if (unifiedMailbox) return toast(mailaiText('请先选择左侧的具体邮箱，再批量处理邮件'), 'warn');
-  if (bulkOperationActive || specialMailbox || !renderedEmailIds.length) return;
+  if (bulkOperationActive || !canSelectMailboxMail() || !renderedEmailIds.length) return;
   renderedEmailIds.forEach(id => selectedMailIds.add(id));
   selectionAnchorId = renderedEmailIds[0];
   bulkStackFocusId = renderedEmailIds[0];
   syncBulkSelectionVisuals();
+}
+
+function canSelectMailboxMail() {
+  return !unifiedMailbox && (!specialMailbox || specialMailbox === 'sent');
 }
 
 function mailContextIcon(path) {
@@ -24858,7 +24837,7 @@ function ensureMailContextMenu() {
       return;
     }
     hideMailContextMenu();
-    if (action === 'open') { await selectEmail(id); return; }
+    if (action === 'open') { await (specialMailbox === 'sent' ? selectSpecialMessage(id) : selectEmail(id)); return; }
     if (['reply', 'reply_all', 'forward'].includes(action)) {
       await selectEmail(id);
       await composeFromEmail(action);
@@ -24892,6 +24871,7 @@ function renderMailMoveFolders() {
 
 function showMailContextMenu(x, y, id) {
   const menu = ensureMailContextMenu();
+  const sentView = specialMailbox === 'sent';
   const row = allEmails.find(item => Number(item.id) === Number(id)) || {};
   const count = selectedMailIds.size;
   const localSelection = Boolean(row.is_local_archive) || [...selectedMailIds].some(selected => allEmails.find(item => Number(item.id) === Number(selected))?.is_local_archive);
@@ -24909,7 +24889,13 @@ function showMailContextMenu(x, y, id) {
   menu._returnScope={accountId:activeMailAccount()?.id||'',unified:unifiedMailbox,rowAccount:menu._returnFocus?.dataset.accountId||''};
   const list=document.getElementById('email-list');
   menu._listScrollTop=list.scrollTop;menu._listScrollLeft=list.scrollLeft;
-  menu.innerHTML = `
+  menu.innerHTML = sentView ? `
+    <div class="mail-context-summary">${count > 1 ? mailaiTemplate`已选 ${count} 封邮件` : mailaiText('邮件操作')}</div>
+    ${count === 1 ? `<button type="button" role="menuitem" data-context-action="open">${mailContextIcon('<path d="M3.5 5.5h13v9h-13zM5 7l5 4 5-4"/>')}<span><span data-i18n="ui.5507fbd6970f">打开邮件</span></span><kbd>↵</kbd></button>` : ''}
+    <button type="button" class="danger" role="menuitem" data-context-action="trash">${mailContextIcon('<path d="M4 6h12M7 6V4h6v2M6 8l.7 8h6.6l.7-8M8.5 9.5v4M11.5 9.5v4"/>')}<span><span data-i18n="ui.0beae53e661c">移入已删除</span></span></button>
+    <div class="mail-context-separator"></div>
+    <button type="button" role="menuitem" data-context-action="select-all">${mailContextIcon('<path d="M4 4h12v12H4zM7 10l2 2 4-4"/>')}<span><span data-i18n="ui.70b25d866a2e">全选当前列表</span></span><kbd>⌘A</kbd></button>
+    ${count > 1 ? `<button type="button" role="menuitem" data-context-action="clear">${mailContextIcon('<path d="m6 6 8 8M14 6l-8 8"/>')}<span><span data-i18n="ui.74966e20df2e">取消选择</span></span><kbd>Esc</kbd></button>` : ''}` : `
     <div class="mail-context-summary">${count > 1 ? mailaiTemplate`已选 ${count} 封邮件` : mailaiText('邮件操作')}<small>${localSelection ? mailaiText('本地邮件仅在本机整理，不上传服务器；请与服务器邮件分开选择') : count > 1 ? mailaiText('以下操作将应用到所选邮件') : mailaiText('右键快捷操作')}</small></div>
     ${count === 1 ? `
       <button type="button" role="menuitem" data-context-action="open">${mailContextIcon('<path d="M3.5 5.5h13v9h-13zM5 7l5 4 5-4"/>')}<span><span data-i18n="ui.5507fbd6970f">打开邮件</span></span><kbd>↵</kbd></button>
@@ -24930,7 +24916,8 @@ function showMailContextMenu(x, y, id) {
   const group=menu.querySelector('.mail-context-folders');
   const items=document.createElement('div');items.className='mail-context-items';
   while(menu.firstChild) items.appendChild(menu.firstChild);
-  menu.append(items,group);
+  menu.append(items);
+  if (group) menu.append(group);
   menu.classList.remove('hidden');
   menu.setAttribute('aria-hidden', 'false');
   positionMailContextMenu(menu,x,y);
@@ -24939,8 +24926,12 @@ function showMailContextMenu(x, y, id) {
 
 function updateBulkToolbar() {
   const toolbar = document.getElementById('bulk-toolbar');
-  const localSelection = [...selectedMailIds].some(id => allEmails.find(item => Number(item.id) === Number(id))?.is_local_archive);
-  renderMailMoveFolders();
+  const sentView = specialMailbox === 'sent';
+  const localSelection = !sentView && [...selectedMailIds].some(id => allEmails.find(item => Number(item.id) === Number(id))?.is_local_archive);
+  if (!sentView) renderMailMoveFolders();
+  for (const control of toolbar.querySelectorAll('[data-bulk-action="read"], [data-bulk-action="unread"], [data-bulk-action="star"], [data-bulk-mail-tags], #bulk-folder')) {
+    control.classList.toggle('hidden', sentView);
+  }
   for (const control of [toolbar.querySelector('[data-bulk-action="star"]'), document.getElementById('bulk-folder')]) {
     if (!control) continue;
     control.disabled = bulkOperationActive || (localSelection && (control.id !== 'bulk-folder' || !localMailSelection().all));
@@ -24949,75 +24940,13 @@ function updateBulkToolbar() {
   const trashView = currentFilter.status === 'trash' && !unifiedMailbox && !specialMailbox;
   toolbar.querySelector('[data-bulk-action="purge"]')?.classList.toggle('hidden', !trashView);
   document.getElementById('btn-empty-trash')?.classList.toggle('hidden', !trashView);
-  toolbar.querySelector('[data-bulk-action="trash"]')?.classList.toggle('hidden', currentFilter.status === 'trash');
-  toolbar.classList.toggle('hidden', (!selectedMailIds.size && !mailSelectionExplicit && !bulkOperationActive) || !!specialMailbox);
+  const trash = toolbar.querySelector('[data-bulk-action="trash"]');
+  trash?.classList.toggle('hidden', !sentView && currentFilter.status === 'trash');
+  if (trash) trash.disabled = bulkOperationActive || (sentView && !selectedMailIds.size);
+  toolbar.classList.toggle('hidden', (!selectedMailIds.size && !mailSelectionExplicit && !bulkOperationActive) || !canSelectMailboxMail());
   if (!bulkOperationActive) mailaiBindUI(document.getElementById('bulk-count'), "textContent", () => (mailaiTemplate`已选 ${selectedMailIds.size} 封`));
-  document.querySelector('.list-pane')?.classList.toggle('selection-active', (!!selectedMailIds.size || mailSelectionExplicit) && !specialMailbox);
+  document.querySelector('.list-pane')?.classList.toggle('selection-active', (!!selectedMailIds.size || mailSelectionExplicit) && canSelectMailboxMail());
   syncReadingSelectionStack();
-}
-
-function syncReadingSelectionStack() {
-  const pane = document.getElementById('reading-pane');
-  if (!pane) return;
-  let stack = pane.querySelector('.reading-selection-stack');
-  const ids = specialMailbox || unifiedMailbox ? [] : [...selectedMailIds];
-  if (ids.length < 2) {
-    bulkStackPreviewController?.abort();
-    bulkStackPreviewController = null;
-    stack?.remove();
-    pane.classList.remove('bulk-stack-active');
-    return;
-  }
-  const focus = ids.includes(bulkStackFocusId) ? bulkStackFocusId : ids.at(-1);
-  const signature = `${ids.join(',')}|${focus}`;
-  if (stack?.dataset.selection === signature) return;
-  const previous = stack?.dataset.selection?.split('|')[0].split(',') || [];
-  const newest = String(focus);
-  const arriving = !previous.includes(newest);
-  const cards = [...ids.filter(id => id !== focus).slice(-3), focus].map((id, index, visible) => {
-    const row = allEmails.find(email => Number(email.id) === Number(id)) || {};
-    const sender = row.from_name || row.from_addr || row.sender || mailaiText('发件人');
-    const subject = row.subject || mailaiText('无主题');
-    const offset = visible.length - index - 1;
-    return `<div class="reading-selection-sheet${offset === 0 && arriving ? ' arriving' : ''}" data-depth="${offset}" aria-hidden="${offset ? 'true' : 'false'}">
-      ${offset === 0 ? `<div class="reading-selection-sheet-head"><span>${esc(String(sender).charAt(0))}</span><div><b>${esc(sender)}</b><small>${esc(row.from_addr || '')}</small></div><time>${esc(fmtDate(row.date || row.created_at || ''))}</time></div>
-      <div class="reading-selection-sheet-content"><h3>${esc(subject)}</h3><div class="reading-selection-sheet-preview" data-stack-body>${esc(row.body_text || row.summary || row.snippet || mailaiText('正在读取邮件预览…'))}</div></div>` : `<div class="reading-selection-sheet-edge"><b>${esc(sender)}</b><small>${esc(subject)}</small></div>`}
-    </div>`;
-  }).join('');
-  if (!stack) {
-    stack = document.createElement('div');
-    stack.className = 'reading-selection-stack';
-    stack.setAttribute('role', 'status');
-    pane.appendChild(stack);
-  }
-  stack.dataset.selection = signature;
-  stack.innerHTML = `<div class="reading-selection-stack-inner"><div class="reading-selection-stack-heading"><strong><span data-i18n="ui.a31bd6586493">已选择 ${ids.length} 封邮件</span></strong><span><span data-i18n="ui.1109410d479a">预览最后选入的邮件</span></span></div><div class="reading-selection-deck">${cards}</div><p><span data-i18n="ui.60a9d58fd2d9">可在左侧继续选择，或使用批量操作</span></p></div>`;
-  pane.classList.add('bulk-stack-active');
-  pane.scrollTop = 0;
-  loadReadingSelectionPreview(focus, stack);
-}
-
-async function loadReadingSelectionPreview(id, stack) {
-  bulkStackPreviewController?.abort();
-  const accountId = activeMailAccount()?.id || '';
-  const key = `${accountId}:${id}`;
-  const body = stack.querySelector('[data-stack-body]');
-  if (!body) return;
-  const cached = bulkStackPreviewCache.get(key);
-  if (cached) { body.textContent = cached; return; }
-  const controller = new AbortController();
-  bulkStackPreviewController = controller;
-  try {
-    const mail = await api(`/api/emails/${id}`, {accountId, signal:controller.signal});
-    if (controller.signal.aborted || !stack.isConnected || !selectedMailIds.has(id) || stack.querySelector('[data-stack-body]') !== body) return;
-    const preview = String(mail.body_text || mail.summary || mail.snippet || '').trim().slice(0, 4000);
-    if (preview) {
-      body.textContent = preview;
-      bulkStackPreviewCache.set(key, preview);
-      if (bulkStackPreviewCache.size > 24) bulkStackPreviewCache.delete(bulkStackPreviewCache.keys().next().value);
-    }
-  } catch (_) { /* The list summary remains visible when detail is unavailable. */ }
-  finally { if (bulkStackPreviewController === controller) bulkStackPreviewController = null; }
 }
 
 function setBulkOperationState(active, label = '', count = selectedMailIds.size) {
@@ -25038,7 +24967,9 @@ async function runBulkAction(action, target = '') {
   if (action === 'purge') return purgeTrash(false);
   if (unifiedMailbox) return toast(mailaiText('请先选择具体邮箱，再批量处理邮件'), 'warn');
   if (bulkOperationActive || !selectedMailIds.size) return;
-  if (action === 'trash' && (currentFilter.status === 'trash' || [...selectedMailIds].some(id => allEmails.find(e => Number(e.id) === Number(id))?.status === 'trash'))) return toast(mailaiText('邮件已在已删除中，请使用恢复操作'), 'warn');
+  const sentView = specialMailbox === 'sent';
+  if (specialMailbox && !(sentView && action === 'trash')) return;
+  if (!sentView && action === 'trash' && (currentFilter.status === 'trash' || [...selectedMailIds].some(id => allEmails.find(e => Number(e.id) === Number(id))?.status === 'trash'))) return toast(mailaiText('邮件已在已删除中，请使用恢复操作'), 'warn');
   const localMove = action === 'move' && localMailSelection().all;
   const targetLabel = action === 'move' ? (availableMailMoveFolders().find(folder => folder.name === target)?.label || target) : target;
   const payload = {ids:[...selectedMailIds], action:action === 'unread' ? 'read' : action,
@@ -25057,13 +24988,17 @@ async function runBulkAction(action, target = '') {
       {...undoCollector[0].details, count:undoCollector.reduce((sum, item) => sum + item.details.count, 0)});
   };
   try {
-    const result = {completed:0, failed:[]};
+    const result = {completed:0, failed:[], removed:[]};
     for (let start = 0; start < payload.ids.length; start += 100) {
       const batch = payload.ids.slice(start, start + 100);
       setBulkOperationState(true, `${actionLabel} · ${start}/${count}`, count);
       try {
-        const part = await api('/api/emails/bulk', {accountId, undoCollector, method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload, ids:batch})});
+        const part = await api(sentView ? '/api/mail/sent/bulk-trash' : '/api/emails/bulk', {accountId, undoCollector, method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sentView ? {ids:batch} : {...payload, ids:batch})});
         result.completed += part.completed; result.failed.push(...part.failed);
+        if (sentView) {
+          const failedIds = new Set(part.failed.map(item => Number(item.id)));
+          result.removed.push(...batch.filter(id => !failedIds.has(id)));
+        }
         if (action === 'read' || action === 'unread') {
           const failedIds = new Set((part.failed || []).map(item => Number(item.id)));
           for (const id of batch) {
@@ -25079,9 +25014,16 @@ async function runBulkAction(action, target = '') {
         ? mailaiTemplate`已标记 ${result.completed} 封邮件，服务器将在后台同步`
         : action === 'move' ? (localMove ? mailaiTemplate`已在本机移动 ${result.completed} 封邮件，未上传服务器` : mailaiTemplate`服务器已移动 ${result.completed} 封邮件，本地状态已更新`) : mailaiTemplate`已处理 ${result.completed} 封邮件`;
     toast(`${completedText}${result.failed.length ? mailaiTemplate`，失败 ${result.failed.length} 封` : ''}`, result.failed.length ? 'warn' : 'success');
-    selectedMailIds = new Set(result.failed.map(item => item.id)); mailSelectionExplicit = !!selectedMailIds.size; selectionAnchorId = null; await loadData();
+    selectedMailIds = new Set(result.failed.map(item => item.id));
+    mailSelectionExplicit = !!selectedMailIds.size;
+    selectionAnchorId = null;
+    if (sentView) removeTrashedSentRows(result.removed, accountId);
+    await loadData(sentView ? {silent:true, requireFresh:true} : undefined);
     if (result.failed.length && typeof showOperationFailures === 'function') showOperationFailures(result.failed, async () => {
-      if (activeMailAccount()?.id !== accountId) await openAccountMailbox(accountId, 'inbox');
+      if (activeMailAccount()?.id !== accountId || (sentView && specialMailbox !== 'sent')) {
+        await openAccountMailbox(accountId, sentView ? 'sent' : 'inbox');
+        if (activeMailAccount()?.id !== accountId || (sentView && specialMailbox !== 'sent')) return;
+      }
       selectedMailIds = new Set(result.failed.map(item => item.id));
       return runBulkAction(payload.action === 'read' && payload.value === false ? 'unread' : payload.action, target);
     });
@@ -28494,7 +28436,7 @@ document.addEventListener('keydown', event => {
     !!target.closest('[contenteditable="true"]')
   );
   const overlayOpen = !!document.querySelector('.compose-modal:not(.hidden), .modal:not(.hidden)');
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a' && !editing && !overlayOpen && !specialMailbox) {
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'a' && !editing && !overlayOpen && (!specialMailbox || specialMailbox === 'sent')) {
     event.preventDefault();
     selectAllVisibleMail();
     return;
@@ -32476,6 +32418,23 @@ function showOperationFailures(items, retry) {
   taskNotice(mailaiTemplate`${items.length} 封未完成：${items.slice(0, 2).map(item => mailaiSystemMessage(item.error)).join('；')}`, mailaiText('仅重试失败项'), retry);
 }
 
+function removeTrashedSentRows(ids, accountId) {
+  if (!ids.length || activeMailAccount()?.id !== accountId) return false;
+  // Invalidate in-flight reads before removing rows already committed to Trash.
+  ++mailLoadRevision;
+  window.mailaiMailboxStore?.invalidate(accountId);
+  const removed = new Set(ids.map(Number));
+  sentMessages = sentMessages.filter(item => !removed.has(Number(item.id)));
+  if (specialMailbox === 'sent') {
+    if (Array.isArray(searchResults)) searchResults = searchResults.filter(item => !removed.has(Number(item.id)));
+    renderSpecialMailbox({silent:true});
+  } else if (removed.has(Number(selectedEmailId))) {
+    resetReadingPane();
+  }
+  updateSidebar();
+  return true;
+}
+
 async function refreshSentMailboxView(accountId, {token = '', nextStatus = '', sentRecordId = null} = {}) {
   try {
     window.mailaiMailboxStore?.invalidate(accountId);
@@ -33747,6 +33706,102 @@ document.getElementById('task-center-list').addEventListener('click', async even
 ;
 /* ---- mail-list-view.js ---- */
 // A presentation preference only: filtering, selection and reading share the existing list.
+function syncBulkSelectionVisuals() {
+  if (selectedMailIds.size) mailSelectionExplicit = true;
+  const revision = ++bulkVisualRevision;
+  const items = [...document.querySelectorAll('.email-item')];
+  let cursor = 0;
+  const paint = () => {
+    if (revision !== bulkVisualRevision) return;
+    const end = Math.min(cursor + 80, items.length);
+    for (; cursor < end; cursor += 1) {
+      const item = items[cursor];
+      const chosen = selectedMailIds.has(Number(item.dataset.id));
+      item.classList.toggle('bulk-selected', chosen);
+      item.setAttribute('aria-selected', chosen ? 'true' : 'false');
+    }
+    if (cursor < items.length) {
+      (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : setTimeout)(paint);
+    }
+  };
+  paint();
+  updateBulkToolbar();
+}
+
+function syncReadingSelectionStack() {
+  const pane = document.getElementById('reading-pane');
+  if (!pane) return;
+  let stack = pane.querySelector('.reading-selection-stack');
+  const ids = canSelectMailboxMail() ? [...selectedMailIds] : [];
+  if (ids.length < 2) {
+    bulkStackPreviewController?.abort();
+    bulkStackPreviewController = null;
+    stack?.remove();
+    pane.classList.remove('bulk-stack-active');
+    return;
+  }
+  const sent = specialMailbox === 'sent';
+  const accountId = activeMailAccount()?.id || '';
+  const scope = `${accountId}|${specialMailbox}`;
+  const focus = ids.includes(bulkStackFocusId) ? bulkStackFocusId : ids.at(-1);
+  const signature = `${ids.join(',')}|${focus}|${scope}|${currentI18nLanguage()}`;
+  if (stack?.dataset.selection === signature) return;
+  const previous = stack?.dataset.scope === scope ? stack.dataset.selection.split('|')[0].split(',') : [];
+  const newest = String(focus);
+  const arriving = !previous.includes(newest);
+  const rows = sent ? (currentFilter.search && searchResults !== null ? searchResults : sentMessages) : allEmails;
+  const cards = [...ids.filter(id => id !== focus).slice(-3), focus].map((id, index, visible) => {
+    const row = rows.find(email => Number(email.id) === id) || {};
+    const address = sent ? row.counterpart_addr || row.to_addr || row.cc_addr || row.bcc_addr || '' : row.from_addr || '';
+    const name = sent ? row.counterpart_name || address || mailaiText('尚未填写收件人') : row.from_name || address || row.sender || mailaiText('发件人');
+    const label = sent ? `${mailaiText('发给')} ${name}` : name;
+    const subject = row.subject || mailaiText('无主题');
+    const offset = visible.length - index - 1;
+    return `<div class="reading-selection-sheet${offset === 0 && arriving ? ' arriving' : ''}" data-depth="${offset}" aria-hidden="${offset ? 'true' : 'false'}">
+      ${offset === 0 ? `<div class="reading-selection-sheet-head"><span>${esc(String(name).charAt(0))}</span><div><b>${esc(label)}</b>${!sent || address && name !== address ? `<small>${esc(address)}</small>` : ''}</div><time>${esc(fmtDate(row.sent_at || row.date || row.created_at || ''))}</time></div>
+      <div class="reading-selection-sheet-content"><h3>${esc(subject)}</h3><div class="reading-selection-sheet-preview" data-stack-body>${esc(row.body_text || row.summary || row.snippet || mailaiText('正在读取邮件预览…'))}</div></div>` : `<div class="reading-selection-sheet-edge"><b>${esc(label)}</b><small>${esc(subject)}</small></div>`}
+    </div>`;
+  }).join('');
+  if (!stack) {
+    stack = document.createElement('div');
+    stack.className = 'reading-selection-stack';
+    stack.setAttribute('role', 'status');
+    pane.appendChild(stack);
+  }
+  stack.dataset.selection = signature;
+  stack.dataset.scope = scope;
+  stack.innerHTML = `<div class="reading-selection-stack-inner"><div class="reading-selection-stack-heading"><strong><span data-i18n="ui.a31bd6586493">已选择 ${ids.length} 封邮件</span></strong><span><span data-i18n="ui.1109410d479a">预览最后选入的邮件</span></span></div><div class="reading-selection-deck">${cards}</div><p><span data-i18n="ui.60a9d58fd2d9">可在左侧继续选择，或使用批量操作</span></p></div>`;
+  pane.classList.add('bulk-stack-active');
+  pane.scrollTop = 0;
+  loadReadingSelectionPreview(focus, stack, {sent, accountId, scope});
+}
+
+async function loadReadingSelectionPreview(id, stack, {sent, accountId, scope}) {
+  bulkStackPreviewController?.abort();
+  const key = `${scope}:${id}`;
+  const body = stack.querySelector('[data-stack-body]');
+  if (!body) return;
+  const cached = bulkStackPreviewCache.get(key);
+  if (cached) { body.textContent = cached; return; }
+  const controller = new AbortController();
+  bulkStackPreviewController = controller;
+  try {
+    const path = sent ? `/api/mail/sent/${id}/preview` : `/api/emails/${id}`;
+    const mail = await api(path, {accountId, signal:controller.signal});
+    if (controller.signal.aborted || !stack.isConnected || !selectedMailIds.has(id) || stack.querySelector('[data-stack-body]') !== body ||
+        (activeMailAccount()?.id || '') !== accountId) return;
+    const preview = String(mail.body_text || mail.summary || mail.snippet || '').trim().slice(0, 4000);
+    if (preview) {
+      body.textContent = preview;
+      bulkStackPreviewCache.set(key, preview);
+      if (bulkStackPreviewCache.size > 24) bulkStackPreviewCache.delete(bulkStackPreviewCache.keys().next().value);
+    } else if (sent && body.textContent === mailaiText('正在读取邮件预览…')) {
+      mailaiBindUI(body, 'textContent', () => mailaiText('暂无正文'));
+    }
+  } catch (_) { /* The list summary remains visible when detail is unavailable. */ }
+  finally { if (bulkStackPreviewController === controller) bulkStackPreviewController = null; }
+}
+
 function mailTableHeader() {
   if (document.body.dataset.mailListView !== 'table') return '';
   const ascending = currentFilter.sort === 'date-asc';
@@ -34560,7 +34615,7 @@ function mailCardDate(value, now = new Date()) {
           <label><span data-i18n="writingMemory.history">${esc(copy('history'))}</span><select data-writing-days>
             ${[30,90,180].map(days => `<option value="${days}" ${days === 90 ? 'selected' : ''}>${esc(copy('days').replace('{count}', days))}</option>`).join('')}
           </select></label>
-          ${button('collect','enable')}${button('clear','clear')}
+          ${button('collect','pauseCollection')}${button('clear','clear')}
         </div>
       </div>
       <div data-writing-rules></div>
@@ -34592,13 +34647,15 @@ function mailCardDate(value, now = new Date()) {
     function render({preserveOpen = true} = {}) {
       if (!data) return;
       const settings = data.settings;
-      mailaiBindUI(collect, 'textContent', () => copy(settings.collect ? 'pauseCollection' : settings.initialized ? 'resumeCollection' : 'enable'));
-      days.closest('label').hidden = settings.initialized;
-      days.disabled = !settings.enabled;
+      mailaiBindUI(collect, 'textContent', () => copy(settings.collect ? 'pauseCollection' : 'resumeCollection'));
+      if (settings.days) days.value = String(settings.days);
+      days.closest('label').hidden = !settings.initialized || Boolean(settings.cleared);
+      days.disabled = busy || !settings.enabled || !settings.collect;
+      collect.hidden = !settings.initialized;
       clear.hidden = !settings.initialized;
       collect.disabled = busy || !settings.enabled;
       clear.disabled = busy;
-      showStatus(settings.enabled ? (settings.initialized ? 'observed' : '') : 'masterOff', {count:data.observed});
+      showStatus(!settings.enabled ? 'masterOff' : settings.initialized ? 'observed' : 'waitingModel', {count:data.observed});
       footer.hidden = data.total <= pageSize;
       footer.querySelector('[data-writing-page]').textContent = data.total ? `${offset + 1}–${offset + data.items.length} / ${data.total}` : '';
       footer.querySelector('[data-writing-action="prev"]').disabled = busy || !offset;
@@ -34638,6 +34695,10 @@ function mailCardDate(value, now = new Date()) {
     }
 
     collect.disabled = clear.disabled = true;
+    days.addEventListener('change', () => {
+      if (!data || busy || !current()) return;
+      void run(() => request('/settings','PUT',{collect:data.settings.collect,days:Number(days.value),revision:data.settings.revision}));
+    });
     panel.addEventListener('toggle', () => { if (panel.open) void run(); });
     const timer = setInterval(() => {
       if (panel.open && !document.hidden && !list.querySelector('.writing-memory-editor:not([hidden])')) void run(null, {quiet:true});

@@ -145,6 +145,10 @@ def test_special_and_unified():
             db.finish_sent_message(receipt,ok=True,message_id='local-only@example.test')
             for scope in ({'status':'inbox'},{'special':'sent'},{'special':'drafts'}):
                 assert mail_list.page(scope)['counts']['totals']['sent']==3
+        with patch.object(db,'get_sent_message',side_effect=AssertionError('Preview loaded a complete receipt')), \
+             patch.object(db,'get_email',side_effect=AssertionError('Preview loaded a complete server message')):
+            assert compose.api_sent_preview(sent) == {'body_text':'hello'}
+            assert compose.api_sent_preview(-server_only) == {'body_text':'HUGE BODY'}
         # Deleting a remote-only sent message removes it from Sent and is idempotent on repeat calls.
         deleted=compose.api_delete_sent_message(-server_only)
         assert deleted['completed']==1 and not deleted['failed']
@@ -161,6 +165,23 @@ def test_special_and_unified():
         assert mail_read.api_mailbox_counts()['totals']['sent']==1
         assert all(item.get('id')!=sent for item in compose.api_sent_messages())
         assert compose.api_delete_sent_message(sent).get('already_trashed') is True
+        from app.mail_undo import restore
+        from app.web.schemas import SentTrashRequest
+        assert db.cancel_pending_trash(server_only)
+        copy = db.upsert_email({'uid':22,'folder':'Sent','status':'sent','message_id':'mutual@example.test','subject':'Receipt copy'})
+        local = db.create_sent_message({'to_addr':'recipient@example.test','subject':'Receipt record'})
+        db.finish_sent_message(local,ok=True,message_id='mutual@example.test')
+        unconfirmed = db.create_sent_message({'to_addr':'recipient@example.test','subject':'Still sending'})
+        inbox = db.list_emails(status='inbox',days=9999,limit=1)[0]['id']
+        batch = compose.api_bulk_trash_sent(SentTrashRequest(ids=[-server_only, local, local, receipt, unconfirmed, -inbox]))
+        assert batch['queued'] == batch['completed'] == 2
+        assert {row['id'] for row in batch['failed']} == {receipt, unconfirmed, -inbox}
+        assert db.get_email(inbox)['status'] == 'inbox' and not db.get_email(inbox)['pending_action']
+        assert db.get_email(copy)['pending_action'] == 'trash'
+        repeated = compose.api_bulk_trash_sent(SentTrashRequest(ids=[-server_only, local]))
+        assert repeated['completed'] == repeated['reconciled'] == 2 and repeated['undo_token'] is None
+        assert not restore(batch['undo_token'])['failed']
+        assert not db.get_email(server_only)['pending_action'] and not db.get_email(copy)['pending_action']
         other=dict(values,ACCOUNT_ID='other',DB_PATH=str(root/'other.db'),IMAP_USER='other@example.test')
         with use(other):db.init_db();seed(3)
         registry={'accounts':{key:{'db_path':v['DB_PATH'],'user':v['IMAP_USER']} for key,v in [('a',values),('b',other)]}}

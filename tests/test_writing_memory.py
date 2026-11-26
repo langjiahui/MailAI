@@ -43,13 +43,22 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         account = dict(ACCOUNT_ID='one',DB_PATH=str(root/'one.db'),DATA_DIR=tmp,IMAP_USER=OWNER)
-        with use(account), patch.object(client, 'chat_completion', side_effect=AssertionError('Background learning called the model')):
+        model_ready = [False]
+        with use(account), patch.object(client, 'available', side_effect=lambda: model_ready[0]), \
+             patch.object(client, 'chat_completion', side_effect=AssertionError('Background learning called the model')):
             db.init_db()
             assert not memory.epoch() and memory.process_batch() == 0
-            settings = memory.configure(True,90,0)
-            assert settings['collect'] and settings['initialized']
-            assert memory.configure(False,90,0) is None, 'Older settings tabs cannot overwrite new settings'
+            waiting = memory.listing(0,30)['settings']
+            assert not waiting['collect'] and not waiting['initialized'] and not waiting['model_ready']
+            # Once a model is configured, learning starts automatically without manual enable.
+            model_ready[0] = True
             token = memory.epoch()
+            assert token
+            settings = memory.listing(0,30)['settings']
+            assert settings['collect'] and settings['initialized'] and settings['model_ready'] and settings['days'] == 90
+            assert memory.configure(False,90,0) is None, 'Older settings tabs cannot overwrite new settings'
+            settings = memory.configure(True,180,settings['revision'])
+            assert settings['days'] == 180 and memory.epoch() == token, 'Adjusting history window keeps active baseline epoch'
             baseline = dict(value=BEFORE,prefix='',epoch=token,audience=[[RECIPIENT],[],[]])
             first = outgoing(1,root='<same@example.test>',baseline=baseline)
             outgoing(2,root='<same@example.test>',baseline=baseline)
@@ -124,7 +133,7 @@ def main():
             assert not style.edited_signals({'body':appended},'这段前缀已经重写。\n'+AFTER,'',[[RECIPIENT],[],[]],token)
             settings = memory.configure(False,90,settings['revision'])
             assert memory.recall(RECIPIENT,'','','reply',{}) and not memory.epoch()
-            assert memory.process_batch() == 0
+            assert memory.process_batch() == 0, 'Manual pause must not auto-restart while model remains configured'
             master = work_memory.settings()
             work_memory.save_settings(False,False,master['revision'])
             assert not memory.recall(RECIPIENT,'','','reply',{})
@@ -135,9 +144,13 @@ def main():
             assert memory.configure(True,90,settings['revision'])
             assert memory.process_batch() == 0 and memory.listing(0,30)['total'] == 0
             assert len(db.list_sent_messages()) == 7 and 'writing_sample' not in db.get_sent_message(first)
-        with use({**account, 'ACCOUNT_ID':'two', 'DB_PATH':str(root/'two.db')}):
+        with use({**account, 'ACCOUNT_ID':'two', 'DB_PATH':str(root/'two.db')}), \
+             patch.object(client, 'available', side_effect=lambda: model_ready[0]):
             db.init_db()
+            model_ready[0] = False
             assert not memory.epoch() and memory.listing(0,30)['observed']==0
+            model_ready[0] = True
+            assert memory.epoch() != token and memory.listing(0,30)['observed']==0 and memory.listing(0,30)['total']==0
     print('PASS sent-mail learning: background scope, draft/send attribution, automatic application, upgrade, pause and clear')
 
 

@@ -1,16 +1,16 @@
 """Short-lived undo records with state checks to protect later user changes."""
 import json
 import uuid
-from contextlib import ExitStack
+from contextlib import ExitStack, nullcontext
 from datetime import datetime, timedelta
 from . import db
 from .imap_client import MailClient
 
 
-def record(action, before, after):
+def record(action, before, after, *, connection=None):
     token = uuid.uuid4().hex
     now = datetime.now()
-    with db.conn() as c:
+    with (nullcontext(connection) if connection is not None else db.conn()) as c:
         c.execute('INSERT INTO undo_operations VALUES(?,?,?,?,0)',
                   (token, json.dumps({'action': action, 'before': before, 'after': after}), now.isoformat(), (now + timedelta(minutes=2)).isoformat()))
     return token

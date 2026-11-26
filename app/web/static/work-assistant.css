@@ -46,7 +46,7 @@ html[data-theme] body #compose-ai-panel .work-compose button:hover{background:va
 .writing-memory-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; padding-block:2px 6px; }
 .writing-memory-toolbar small { color:var(--desk-muted); }
 .writing-memory-toolbar small:empty { display:none; }
-.writing-memory-controls { gap:4px; margin-inline-start:auto; }
+.writing-memory-controls { gap:4px; margin-inline-start:auto; max-width:100%; }
 .writing-memory-controls label { flex-flow:row wrap; align-items:center; gap:5px; margin:0 2px 0 0; }
 .writing-memory-panel select {
   min-height:30px; max-width:100%; padding:4px 8px; border:1px solid var(--desk-line);

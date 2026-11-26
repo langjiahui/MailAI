@@ -3,6 +3,7 @@ const path = require('node:path');
 const assert = require('node:assert/strict');
 
 const source = fs.readFileSync(path.join(__dirname, '../app/web/static/app.js'), 'utf8');
+const mailListView = fs.readFileSync(path.join(__dirname, '../app/web/static/mail-list-view.js'), 'utf8');
 const mailRender = source.slice(source.indexOf('function renderEmailList('), source.indexOf('function shouldShowMailDirection('));
 const ruleRender = source.slice(source.indexOf('function renderRuleScenarios('), source.indexOf('async function saveRuleScenario('));
 
@@ -16,7 +17,7 @@ assert.match(source, /loadMailPages\(mailPath, isCurrent\)/,
   'mailbox loading must use paginated metadata');
 assert.match(source, /mailRenderLimit \+= 240/,
   'mail list must allow incremental local rendering');
-assert.match(source, /Math\.min\(cursor \+ 80, items\.length\)/,
+assert.match(mailListView, /Math\.min\(cursor \+ 80, items\.length\)/,
   'selection styling must be painted in bounded frames');
 assert.match(source, /const visibleRows = rows\.slice\(0, todoRenderLimit\)/,
   'todo center must cap rendered DOM nodes');

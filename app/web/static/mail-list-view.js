@@ -1,4 +1,100 @@
 // A presentation preference only: filtering, selection and reading share the existing list.
+function syncBulkSelectionVisuals() {
+  if (selectedMailIds.size) mailSelectionExplicit = true;
+  const revision = ++bulkVisualRevision;
+  const items = [...document.querySelectorAll('.email-item')];
+  let cursor = 0;
+  const paint = () => {
+    if (revision !== bulkVisualRevision) return;
+    const end = Math.min(cursor + 80, items.length);
+    for (; cursor < end; cursor += 1) {
+      const item = items[cursor];
+      const chosen = selectedMailIds.has(Number(item.dataset.id));
+      item.classList.toggle('bulk-selected', chosen);
+      item.setAttribute('aria-selected', chosen ? 'true' : 'false');
+    }
+    if (cursor < items.length) {
+      (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : setTimeout)(paint);
+    }
+  };
+  paint();
+  updateBulkToolbar();
+}
+
+function syncReadingSelectionStack() {
+  const pane = document.getElementById('reading-pane');
+  if (!pane) return;
+  let stack = pane.querySelector('.reading-selection-stack');
+  const ids = canSelectMailboxMail() ? [...selectedMailIds] : [];
+  if (ids.length < 2) {
+    bulkStackPreviewController?.abort();
+    bulkStackPreviewController = null;
+    stack?.remove();
+    pane.classList.remove('bulk-stack-active');
+    return;
+  }
+  const sent = specialMailbox === 'sent';
+  const accountId = activeMailAccount()?.id || '';
+  const scope = `${accountId}|${specialMailbox}`;
+  const focus = ids.includes(bulkStackFocusId) ? bulkStackFocusId : ids.at(-1);
+  const signature = `${ids.join(',')}|${focus}|${scope}|${currentI18nLanguage()}`;
+  if (stack?.dataset.selection === signature) return;
+  const previous = stack?.dataset.scope === scope ? stack.dataset.selection.split('|')[0].split(',') : [];
+  const newest = String(focus);
+  const arriving = !previous.includes(newest);
+  const rows = sent ? (currentFilter.search && searchResults !== null ? searchResults : sentMessages) : allEmails;
+  const cards = [...ids.filter(id => id !== focus).slice(-3), focus].map((id, index, visible) => {
+    const row = rows.find(email => Number(email.id) === id) || {};
+    const address = sent ? row.counterpart_addr || row.to_addr || row.cc_addr || row.bcc_addr || '' : row.from_addr || '';
+    const name = sent ? row.counterpart_name || address || mailaiText('尚未填写收件人') : row.from_name || address || row.sender || mailaiText('发件人');
+    const label = sent ? `${mailaiText('发给')} ${name}` : name;
+    const subject = row.subject || mailaiText('无主题');
+    const offset = visible.length - index - 1;
+    return `<div class="reading-selection-sheet${offset === 0 && arriving ? ' arriving' : ''}" data-depth="${offset}" aria-hidden="${offset ? 'true' : 'false'}">
+      ${offset === 0 ? `<div class="reading-selection-sheet-head"><span>${esc(String(name).charAt(0))}</span><div><b>${esc(label)}</b>${!sent || address && name !== address ? `<small>${esc(address)}</small>` : ''}</div><time>${esc(fmtDate(row.sent_at || row.date || row.created_at || ''))}</time></div>
+      <div class="reading-selection-sheet-content"><h3>${esc(subject)}</h3><div class="reading-selection-sheet-preview" data-stack-body>${esc(row.body_text || row.summary || row.snippet || mailaiText('正在读取邮件预览…'))}</div></div>` : `<div class="reading-selection-sheet-edge"><b>${esc(label)}</b><small>${esc(subject)}</small></div>`}
+    </div>`;
+  }).join('');
+  if (!stack) {
+    stack = document.createElement('div');
+    stack.className = 'reading-selection-stack';
+    stack.setAttribute('role', 'status');
+    pane.appendChild(stack);
+  }
+  stack.dataset.selection = signature;
+  stack.dataset.scope = scope;
+  stack.innerHTML = `<div class="reading-selection-stack-inner"><div class="reading-selection-stack-heading"><strong><span data-i18n="ui.a31bd6586493">已选择 ${ids.length} 封邮件</span></strong><span><span data-i18n="ui.1109410d479a">预览最后选入的邮件</span></span></div><div class="reading-selection-deck">${cards}</div><p><span data-i18n="ui.60a9d58fd2d9">可在左侧继续选择，或使用批量操作</span></p></div>`;
+  pane.classList.add('bulk-stack-active');
+  pane.scrollTop = 0;
+  loadReadingSelectionPreview(focus, stack, {sent, accountId, scope});
+}
+
+async function loadReadingSelectionPreview(id, stack, {sent, accountId, scope}) {
+  bulkStackPreviewController?.abort();
+  const key = `${scope}:${id}`;
+  const body = stack.querySelector('[data-stack-body]');
+  if (!body) return;
+  const cached = bulkStackPreviewCache.get(key);
+  if (cached) { body.textContent = cached; return; }
+  const controller = new AbortController();
+  bulkStackPreviewController = controller;
+  try {
+    const path = sent ? `/api/mail/sent/${id}/preview` : `/api/emails/${id}`;
+    const mail = await api(path, {accountId, signal:controller.signal});
+    if (controller.signal.aborted || !stack.isConnected || !selectedMailIds.has(id) || stack.querySelector('[data-stack-body]') !== body ||
+        (activeMailAccount()?.id || '') !== accountId) return;
+    const preview = String(mail.body_text || mail.summary || mail.snippet || '').trim().slice(0, 4000);
+    if (preview) {
+      body.textContent = preview;
+      bulkStackPreviewCache.set(key, preview);
+      if (bulkStackPreviewCache.size > 24) bulkStackPreviewCache.delete(bulkStackPreviewCache.keys().next().value);
+    } else if (sent && body.textContent === mailaiText('正在读取邮件预览…')) {
+      mailaiBindUI(body, 'textContent', () => mailaiText('暂无正文'));
+    }
+  } catch (_) { /* The list summary remains visible when detail is unavailable. */ }
+  finally { if (bulkStackPreviewController === controller) bulkStackPreviewController = null; }
+}
+
 function mailTableHeader() {
   if (document.body.dataset.mailListView !== 'table') return '';
   const ascending = currentFilter.sort === 'date-asc';

@@ -1,4 +1,5 @@
 """本地优先删除：远端失败后最多重试两次，随后结束同步。"""
+from contextlib import nullcontext
 from datetime import datetime
 
 from .core import conn
@@ -17,7 +18,7 @@ def discard_exhausted_trash_actions():
         )
 
 
-def queue_trash(email_ids: list[int], delay_seconds: int = 120) -> tuple[list[dict], list[dict]]:
+def queue_trash(email_ids: list[int], delay_seconds: int = 120, *, connection=None) -> tuple[list[dict], list[dict]]:
     """Hide messages immediately and persist an idempotent server-trash operation."""
     ids = list(dict.fromkeys(int(value) for value in email_ids))
     if not ids:
@@ -26,9 +27,10 @@ def queue_trash(email_ids: list[int], delay_seconds: int = 120) -> tuple[list[di
     before, after = [], []
     keys = ('id', 'folder', 'uid', 'status', 'is_read', 'is_starred', 'remote_missing',
             'pending_action', 'pending_target', 'pending_target_uid')
-    with conn() as c:
+    fields = ','.join(keys)
+    with (nullcontext(connection) if connection is not None else conn()) as c:
         for email_id in ids:
-            row = c.execute("SELECT * FROM emails WHERE id=?", (email_id,)).fetchone()
+            row = c.execute(f"SELECT {fields},cleanup_hold,is_local_archive FROM emails WHERE id=?", (email_id,)).fetchone()
             if not row or row['cleanup_hold'] or row['remote_missing'] or row['pending_action'] or row['status'] == 'trash':
                 continue
             before.append({key: row[key] for key in keys})
@@ -37,8 +39,7 @@ def queue_trash(email_ids: list[int], delay_seconds: int = 120) -> tuple[list[di
                 "pending_target_uid=NULL,pending_due_at=?,pending_attempts=0,pending_error='' WHERE id=?",
                 ('trash_local' if row['is_local_archive'] else 'trash', due, email_id),
             )
-            updated = c.execute("SELECT * FROM emails WHERE id=?", (email_id,)).fetchone()
-            after.append({key: updated[key] for key in keys})
+            after.append(dict(c.execute(f"SELECT {fields} FROM emails WHERE id=?", (email_id,)).fetchone()))
     return before, after
 
 
