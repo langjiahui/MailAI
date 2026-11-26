@@ -385,6 +385,35 @@ const {chromium,webkit} = require('playwright');
       assert(await more.evaluate(summary=>summary===document.activeElement));
     }
 
+    // Deleting a sent email must invalidate mailbox store cache so it never reappears.
+    let sentDeleted=false;
+    const sentRows=()=>sentDeleted?[]:[{
+      id:-901,remote_email_id:901,_remote:1,_kind:'sent',_search_summary:1,status:'sent',
+      subject:'Synthetic sent delete',to_addr:'reader@example.test',date:'2026-11-23T10:00:00',
+      summary:'Body for delete test',attachments:[],tags:[],
+    }];
+    await page.route('**/api/mailbox/list*',async route=>{
+      const filters=new URL(route.request().url()).searchParams.get('filters')||'';
+      if(filters.includes('"special":"sent"')){
+        const rows=sentRows();
+        return route.fulfill({json:{items:rows,total:rows.length,next:'',domains:[],facets:{risk:{},categories:{},tags:{}},counts:{totals:{sent:rows.length},local:{},all:0},revision:{}}});
+      }
+      return route.continue();
+    });
+    await page.route('**/api/emails/901',route=>route.fulfill({json:{id:901,status:'sent',subject:'Synthetic sent delete',to_addr:'reader@example.test',date:'2026-11-23T10:00:00',body_html:'<p>Body for delete test</p>',attachments:[]}}));
+    await page.route('**/api/mail/sent/-901',route=>{
+      sentDeleted=true;
+      return route.fulfill({json:{ok:true,completed:1,queued:1,failed:[]}});
+    });
+    await page.setViewportSize({width:1512,height:1000});
+    await page.evaluate(id=>openAccountMailbox(id,'sent'),outgoingAccount);
+    await page.locator('#email-list .email-item[data-id="-901"]').click();
+    await page.locator('.special-mail-actions .special-delete').click();
+    await page.waitForFunction(()=>!document.querySelector('#email-list .email-item[data-id="-901"]') && !document.querySelector('.toast-error'));
+    assert.equal(sentDeleted,true);
+    await page.evaluate(()=>loadData({silent:true}));
+    assert.equal(await page.locator('#email-list .email-item[data-id="-901"]').count(),0,'Deleted sent mail must not return from stale cache');
+
     if(engine==='chromium') {
       const output=await browser.newPage();
       await output.setContent(initial.document);

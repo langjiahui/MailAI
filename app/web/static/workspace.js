@@ -124,7 +124,8 @@ function describeMailUndo(path, body, result, accountId) {
   let payload = {};
   try { payload = JSON.parse(body || '{}'); } catch (_) {}
   const query = new URLSearchParams(path.split('?')[1] || '');
-  const action = payload.action || path.split('?')[0].split('/').at(-1);
+  const cleanPath = path.split('?')[0];
+  const action = payload.action || (/^\/api\/mail\/sent\//.test(cleanPath) ? 'trash' : cleanPath.split('/').at(-1));
   const value = payload.value !== false && query.get('value') !== 'false';
   const moveTarget = payload.target || result.folder || query.get('target');
   const moveLabel = result.local_only ? (moveTarget === '__local_archive__' ? mailaiText('本地归档') : mailaiText('收件箱（仅本机）')) : moveTarget;

@@ -1378,6 +1378,7 @@ function draftPayload() {
     send_at: document.getElementById('compose-send-at')?.value || '',
     followup_days: Number(document.getElementById('compose-followup-days')?.value || 0),
     followup_at: document.getElementById('compose-followup-at')?.value || '',
+    ...(draftSession.writingSample ? {writing_sample:draftSession.writingSample} : {}),
   };
 }
 
@@ -1483,6 +1484,9 @@ async function openCompose(seed = {}) {
   composeAccountId = seed.account_id || activeMailAccount()?.id || '';
   window.mailaiProductivityComposeReset?.(seed);
   draftSession = {id: seed.id || null, revision:seed.revision || null, accountId:composeAccountId, pending: Promise.resolve(), canceled: false, busy: false, assistantReview: Boolean(seed.assistant_review)};
+  if (seed.id && seed.writing_sample) {
+    try { draftSession.writingSample = JSON.parse(seed.writing_sample); } catch (_) {}
+  }
   currentDraftId = seed.id || null;
   signatureState = {items:[], default_id:''};
   composeContext = {source_draft_email_id:seed.source_draft_email_id || null, mode: seed.mode || 'compose', reply_to_email_id: seed.reply_to_email_id || null, in_reply_to: seed.in_reply_to || '', references: seed.references || '', original_text: seed.original_text || ''};
@@ -2000,6 +2004,20 @@ function queueDraftSave() {
   if (!draftMaxSaveTimer) draftMaxSaveTimer = setTimeout(save, 15000);
 }
 
+function composeRecipientFields() {
+  return Object.fromEntries(['to','cc','bcc'].map(field => [field + '_addr', normalizeRecipientText(document.getElementById('compose-' + field).value)]));
+}
+
+function composeWritingAudience(fields = composeRecipientFields()) {
+  const seen = new Set();
+  return ['to_addr','cc_addr','bcc_addr'].map(field => {
+    const group = [...new Set(recipientEmails(fields[field]).map(address => address.toLowerCase()))].sort();
+    const unique = group.filter(address => !seen.has(address));
+    group.forEach(address => seen.add(address));
+    return unique;
+  });
+}
+
 function composeRecipientContext() {
   const rows = [
     [mailaiText('收件人'), document.getElementById('compose-to').value.trim()],
@@ -2023,6 +2041,18 @@ function refreshComposeAiContext() {
   const panel = document.getElementById('compose-ai-panel');
   if (!panel) return;
   const values = composeAiAvailability();
+  const memoryStatus = document.getElementById('compose-ai-writing-memory');
+  if (memoryStatus) {
+    const staleAudience = composeAiSuggestion?.audience && JSON.stringify(composeAiSuggestion.audience) !== JSON.stringify(composeWritingAudience());
+    const rules = Object.entries(composeAiSuggestion?.writingRules || {});
+    mailaiBindUI(memoryStatus, 'textContent', () => {
+      if (staleAudience) return mailaiT('writingMemory.audienceChanged') || MAILAI_UI_COPY['writingMemory.audienceChanged'][0];
+      if (!rules.length) return '';
+      const label = key => mailaiT(key) || MAILAI_UI_COPY[key][0];
+      const hints = rules.slice(0, 3).map(([field, item]) => field === 'salutation' ? item.value : label('writingMemory.value.' + item.value));
+      return label('writingMemory.applied').replace('{style}', hints.join(' · '));
+    });
+  }
   const bodyLabel = ['reply','reply_all'].includes(composeContext.mode) ? mailaiText('已有回复') : (composeContext.mode === 'forward' ? mailaiText('转发说明') : mailaiText('已有正文'));
   const labels = {get subject() { return mailaiText('主题'); }, get recipients() { return mailaiText('收件人'); }, get original() { return mailaiText('原邮件'); }, body:bodyLabel, get attachments() { return mailaiText('附件名称'); }};
   const selected = [];
@@ -2048,6 +2078,7 @@ function resetComposeAiPanel() {
   document.getElementById('compose-ai-error').classList.add('hidden');
   document.getElementById('compose-ai-undo').classList.add('hidden');
   draftSession.aiUndo = null; draftSession.aiRetry = null;
+  draftSession.writingLengthTouched = false;
   composeAiController?.abort(); composeAiController = null;
   document.querySelectorAll('#btn-ai-generate, #btn-ai-regenerate, [data-ai-compose]').forEach(button => setLoading(button, false));
   composeAiSuggestion = '';
@@ -2195,8 +2226,9 @@ async function aiCompose(operation, button) {
     setTimeout(() => editor.classList.remove('needs-body'), 2400);
     return toast(mailaiText('请先在左侧填写邮件正文，再使用此功能'), 'warn');
   }
-  const selected = new Set([...document.querySelectorAll('.compose-ai-context-options input:checked:not(:disabled)')].map(input => input.value));
   const values = composeAiAvailability();
+  const selected = new Set([...document.querySelectorAll('.compose-ai-context-options input:checked')].map(input => input.value)
+    .filter(key => Array.isArray(values[key]) ? values[key].length : values[key]));
   const instructionInput = document.getElementById('compose-ai-instruction');
   const hasReference = instructionInput.value.trim() || (quickRewrite && values.body) ||
     ['subject','recipients','original','body'].some(key => selected.has(key) && values[key]) ||
@@ -2228,11 +2260,16 @@ async function aiCompose(operation, button) {
   panel.classList.add('is-thinking'); panel.classList.remove('has-result');
   mailaiBindUI(document.getElementById('compose-ai-status'), "textContent", () => (mailaiText('我正在结合你勾选的邮件上下文组织内容…')));
   try {
+    const recipientFields = composeRecipientFields();
+    const audience = composeWritingAudience(recipientFields);
     const request = {
       operation,
       user_instruction: document.getElementById('compose-ai-instruction').value.trim(),
       subject: selected.has('subject') ? values.subject : '',
       recipients: selected.has('recipients') ? values.recipients : '',
+      recipient_fields: selected.has('recipients') ? recipientFields : null,
+      automatic_tone: !session.personaTouchedTone,
+      automatic_length: !session.writingLengthTouched,
       original_text: selected.has('original') ? values.original : '',
       source_email_id: selected.has('original') && operation === 'reply' ? composeContext.reply_to_email_id : null,
       use_work_preferences: Boolean(document.getElementById('work-use-preferences')?.checked),
@@ -2284,6 +2321,9 @@ async function aiCompose(operation, button) {
     if (!current()) return;
     composeAiSuggestion = normalizeComposeAiSuggestion(result, !quickRewrite,
       Boolean(currentSignatureId || document.getElementById('compose-signature-content').innerText.trim()));
+    composeAiSuggestion.audience = audience;
+    composeAiSuggestion.writingEpoch = result.writing_memory?.epoch || '';
+    composeAiSuggestion.writingRules = result.writing_memory?.rules || {};
     renderPreview(composeAiSuggestion);
     window.mailaiShowComposeChecks?.(result.checks || []);
     document.getElementById('btn-ai-replace-subject').classList.toggle('hidden', !composeAiSuggestion.subject);
@@ -2334,7 +2374,7 @@ function rememberComposeAiEdit(before, fields, label) {
   const after = composeAiEditSnapshot();
   fields = fields.filter(key => before[key] !== after[key]);
   if (!fields.length) return;
-  draftSession.aiUndo = {before, after, fields};
+  draftSession.aiUndo = {before, after, fields, writingSample:draftSession.writingSample};
   const button = document.getElementById('compose-ai-undo');
   mailaiBindUI(button, "textContent", () => (mailaiTemplate`撤销上次${label}修改`));
   button.classList.remove('hidden');
@@ -2351,6 +2391,7 @@ function undoComposeAiEdit() {
   if (edit.fields.includes('subject')) document.getElementById('compose-subject').value = edit.before.subject;
   if (edit.fields.includes('body')) composeMessageElement().innerHTML = edit.before.body;
   if (edit.fields.includes('signature')) renderComposeSignature(edit.before.signatureId, edit.before.signature);
+  draftSession.writingSample = edit.writingSample;
   draftSession.aiUndo = null;
   document.getElementById('compose-ai-undo').classList.add('hidden');
   clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
@@ -2427,6 +2468,18 @@ function typeComposeAiText(target, text, append, complete) {
   frame = requestAnimationFrame(tick);
 }
 
+function rememberWritingSample(field, suggestion, value, prefix = '') {
+  const sample = {...draftSession.writingSample};
+  const limit = field === 'body' ? 3000 : 300;
+  if (suggestion.writingEpoch && value && value.length <= limit && prefix.length <= limit &&
+      JSON.stringify(suggestion.audience) === JSON.stringify(composeWritingAudience())) {
+    sample[field] = {value, prefix, epoch:suggestion.writingEpoch, audience:suggestion.audience};
+  } else {
+    delete sample[field];
+  }
+  draftSession.writingSample = Object.keys(sample).length ? sample : null;
+}
+
 function applyComposeAiSuggestion(mode) {
   finishComposeAiTyping();
   if (!composeAiSuggestion || draftSession.canceled || draftSession.busy) return;
@@ -2436,16 +2489,25 @@ function applyComposeAiSuggestion(mode) {
     if (!suggestion.subject) return;
     typeComposeAiText(document.getElementById('compose-subject'), suggestion.subject, false, () => {
       rememberComposeAiEdit(before, ['subject'], mailaiText('主题'));
+      if (before.subject !== document.getElementById('compose-subject').value) {
+        rememberWritingSample('subject', suggestion, document.getElementById('compose-subject').value.trim());
+      }
       clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
       toast(mailaiText('AI 主题已填入主题栏'), 'success');
     });
     return;
   }
   const body = composeMessageElement();
+  const prefix = mode === 'append' ? composeMessageText() : '';
   typeComposeAiText(body, suggestion.body || '', mode === 'append', () => {
     if (suggestion.signoff && !currentSignatureId && !document.getElementById('compose-signature-content').innerText.trim())
       renderComposeSignature('', esc(suggestion.signoff).replace(/\n/g, '<br>'));
     rememberComposeAiEdit(before, ['body', 'signature', 'signatureId'], mode === 'append' ? mailaiText('追加内容') : mailaiText('正文'));
+    if (before.body !== body.innerHTML) {
+      const filled = composeMessageText();
+      const applied = prefix ? (filled.startsWith(prefix + '\n') ? filled.slice(prefix.length).trim() : '') : filled;
+      rememberWritingSample('body', suggestion, applied, prefix);
+    }
     clearComposePreflight(); queueDraftSave(); refreshComposeAiContext();
     const target = ['reply','reply_all'].includes(composeContext.mode) ? mailaiText('回复') : (composeContext.mode === 'forward' ? mailaiText('转发说明') : mailaiText('正文'));
     toast(mode === 'append' ? mailaiTemplate`AI 草稿已追加到${target}` : mailaiTemplate`AI 草稿已填入${target}，请核对后发送`, 'success');
@@ -2839,7 +2901,7 @@ async function api(path, opts = {}) {
   }
   const data = await res.json();
   if (opts.method && /^\/api\/system\/mail\/(?:login|logout|account\/update)/.test(path)) window.mailaiMailboxStore?.invalidate();
-  if (opts.method && !['GET','HEAD'].includes(opts.method) && path.split('?')[0]!=='/api/mail/tags/snapshot' && /^\/api\/(?:emails(?:\/|$)|mail\/(?:tags|tag-rules|bulk|send|outbox|undo|folders\/sync|client-imports)|drafts|productivity\/(?!search)|system\/(?:server-cleanup|backups\/.*restore|portable-backups\/restore))/.test(path)) {
+  if (opts.method && !['GET','HEAD'].includes(opts.method) && path.split('?')[0]!=='/api/mail/tags/snapshot' && /^\/api\/(?:emails(?:\/|$)|mail\/(?:tags|tag-rules|bulk|send|sent|outbox|undo|folders\/sync|client-imports)|drafts|trash\/purge\/execute|productivity\/(?!search)|system\/(?:server-cleanup|backups\/.*restore|portable-backups\/restore))/.test(path)) {
     window.mailaiMailboxStore?.invalidate(accountId);
   }
   if (data.undo_token && typeof offerUndo === 'function') {
@@ -4157,13 +4219,15 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
         if (result.failed?.length) throw new Error(result.failed[0].error || mailaiText('删除失败'));
         if (activeMailAccount()?.id === accountId) {
           // Commit the successful deletion locally before any slower refresh.
-          // Invalidate reads already in flight so they cannot restore the old row.
+          // Invalidate mailbox cache and in-flight reads so stale rows cannot reappear.
           ++mailLoadRevision;
-          sentMessages = sentMessages.filter(item => Number(item.id) !== Number(row.id));
+          window.mailaiMailboxStore?.invalidate(accountId);
+          sentMessages = sentMessages.filter(item => String(item.id) !== String(row.id));
+          if (Array.isArray(searchResults)) searchResults = searchResults.filter(item => String(item.id) !== String(row.id));
           if (button.isConnected && pane.contains(button)) resetReadingPane();
           if (specialMailbox === 'sent') renderSpecialMailbox();
           updateSidebar();
-          void loadData({silent:true});
+          void loadData({silent:true, requireFresh:true});
         }
         toast(mailaiText('已发送邮件已移入已删除，稍后同步服务器'), 'success');
       } catch (error) { toast(mailaiSystemMessage(error.message), 'error'); }
@@ -5639,12 +5703,33 @@ function renderAppVersion(result) {
   const releaseSummary = document.getElementById('app-release-summary');
   const releaseTitle = document.getElementById('app-release-summary-title');
   const releaseNotes = document.getElementById('app-release-summary-notes');
-  const notes = String(result.notes || '').trim();
-  if (releaseSummary) releaseSummary.classList.toggle('hidden', !notes);
-  if (releaseTitle && notes) mailaiBindUI(releaseTitle, "textContent", () => (result.available
-    ? mailaiTemplate`新版本 ${result.latest_version} 更新内容`
-    : mailaiText('查看更新内容')));
-  if (releaseNotes) releaseNotes.textContent = notes;
+  const formatNotes = text => typeof window !== 'undefined' && window.mailaiFormatReleaseNotesText
+    ? window.mailaiFormatReleaseNotesText(text)
+    : String(text || '').trim();
+  const notes = formatNotes(result.notes || '');
+  const history = Array.isArray(result?.history) ? result.history.filter(item => item && item.version && item.notes) : [];
+  const historyUrl = /^https:\/\//i.test(String(result?.releases_url || result?.release_url || '').trim())
+    ? String(result.releases_url || result.release_url).trim()
+    : '';
+  if (releaseSummary) releaseSummary.classList.toggle('hidden', !notes && !history.length);
+  if (releaseTitle && (notes || history.length)) {
+    mailaiBindUI(releaseTitle, "textContent", () => (result.available
+      ? (history.length > 1
+        ? updateFlowText('aboutMulti', result.latest_version, history.length)
+        : mailaiTemplate`新版本 ${result.latest_version} 更新内容`)
+      : mailaiText('查看更新内容')));
+  }
+  if (releaseNotes) {
+    if (result.available && history.length > 1 && typeof window !== 'undefined' && window.mailaiRenderReleaseNotesList && typeof document.createElement === 'function') {
+      window.mailaiRenderReleaseNotesList(releaseNotes, history, {
+        latestVersion: result.latest_version,
+        truncated: Boolean(result.history_truncated),
+        releasesUrl: historyUrl,
+      });
+    } else {
+      releaseNotes.textContent = notes;
+    }
+  }
   if (!status) return;
   if (result.development) mailaiBindUI(status, "textContent", () => (mailaiText('源码运行模式；安装包版本会自动检查更新。')));
   else if (!result.supported) mailaiBindUI(status, "textContent", () => (mailaiTemplate`当前设备 ${result.device || ''} 暂无对应安装包。`));
@@ -5673,8 +5758,44 @@ function renderAppUpdateDialog() {
   title.removeAttribute('data-i18n');
   mailaiBindUI(title, 'textContent', () => `${result.current_version} → ${result.latest_version}`);
   mailaiBindUI(document.getElementById('update-dialog-device'), "textContent", () => (mailaiTemplate`已为这台设备匹配 ${appDeviceName(result.device)} 安装包。`));
-  mailaiBindUI(document.getElementById('update-dialog-notes-title'), "textContent", () => (mailaiTemplate`${result.latest_version} 版本发布说明`));
-  mailaiBindUI(document.getElementById('update-dialog-notes'), "textContent", () => String(result.notes || mailaiText('本版本暂未提供发布说明。')).replace(/\[([^\]]+)\]\([^\s)]+\)/g, '$1').replace(/\*\*([^*]+)\*\*/g, '$1'));
+  const history = Array.isArray(result?.history) ? result.history.filter(item => item && item.version && item.notes) : [];
+  const rawHistoryUrl = String(result?.releases_url || result?.release_url || '').trim();
+  const historyUrl = /^https:\/\//i.test(rawHistoryUrl) ? rawHistoryUrl : '';
+  const historyLink = document.getElementById('update-dialog-history-link');
+  if (historyLink) {
+    if (historyUrl) {
+      historyLink.href = historyUrl;
+      historyLink.classList.remove('hidden');
+      mailaiBindUI(historyLink, 'textContent', () => updateFlowText('historyLink'));
+    } else {
+      historyLink.removeAttribute('href');
+      historyLink.classList.add('hidden');
+    }
+  }
+  const notesTitle = document.getElementById('update-dialog-notes-title');
+  const notesHost = document.getElementById('update-dialog-notes');
+  if (history.length > 1 && typeof window !== 'undefined' && window.mailaiRenderReleaseNotesList && typeof document.createElement === 'function') {
+    mailaiBindUI(notesTitle, 'textContent', () => updateFlowText('notesMulti', history.length));
+    window.mailaiRenderReleaseNotesList(notesHost, history, {
+      latestVersion: result.latest_version,
+      truncated: Boolean(result.history_truncated),
+      releasesUrl: historyUrl,
+    });
+  } else {
+    mailaiBindUI(notesTitle, 'textContent', () => updateFlowText('notesSingle', result.latest_version));
+    const formatNotes = typeof window !== 'undefined' && window.mailaiFormatReleaseNotesText
+      ? window.mailaiFormatReleaseNotesText
+      : text => String(text || '').replace(/\[([^\]]+)\]\([^\s)]+\)/g, '$1').replace(/\*\*([^*]+)\*\*/g, '$1').trim();
+    const summary = formatNotes(history[0]?.notes || result.notes);
+    if (typeof document.createElement === 'function' && typeof notesHost?.replaceChildren === 'function') {
+      const plain = document.createElement('span');
+      plain.className = 'update-dialog-notes-plain';
+      mailaiBindUI(plain, 'textContent', () => summary || mailaiText('本版本暂未提供发布说明。'));
+      notesHost.replaceChildren(plain);
+    } else {
+      mailaiBindUI(notesHost, 'textContent', () => summary || mailaiText('本版本暂未提供发布说明。'));
+    }
+  }
   mailaiBindUI(document.getElementById('update-dialog-warning'), 'textContent', () => appUpdateMessage(result.unsigned_warning));
 }
 
@@ -9890,7 +10011,8 @@ async function submitComposeMail(payload, preflightConfirmed = false) {
     payload.id = session.id;
     session.sendToken ||= crypto.randomUUID();
     payload.expected_revision = session.revision || null;
-    const result = await api('/api/mail/outbox', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...payload, request_token:session.sendToken})});
+    const {writing_sample: _writingSample, ...envelope} = payload;
+    const result = await api('/api/mail/outbox', {accountId, method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({...envelope, request_token:session.sendToken})});
     session.canceled = true;
     if (session === draftSession) { currentDraftId = null; clearComposePreflight(); hideCompose(); }
     const [sentList, draftList] = await Promise.all([api('/api/mail/sent', {accountId}), api('/api/drafts', {accountId})]);
@@ -9962,6 +10084,7 @@ document.getElementById('compose-preflight').addEventListener('click', async eve
 document.getElementById('btn-compose-ai').addEventListener('click', () => toggleComposeAiPanel());
 document.getElementById('btn-close-compose-ai').addEventListener('click', () => toggleComposeAiPanel(false));
 document.getElementById('compose-ai-instruction').addEventListener('input', refreshComposeAiContext);
+document.getElementById('compose-ai-length').addEventListener('change', () => { draftSession.writingLengthTouched = true; });
 document.addEventListener('mailai:language-changed', refreshComposeAiContext);
 document.querySelector('.compose-ai-context-options').addEventListener('change', refreshComposeAiContext);
 document.querySelector('.compose-ai-quick-actions').addEventListener('click', event => {

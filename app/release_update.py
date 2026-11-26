@@ -210,6 +210,38 @@ def _official_github_manifest():
     return verify(envelope)
 
 
+def _release_history(
+    manifest: dict,
+    *,
+    installed_tuple: tuple[int, ...],
+    latest_tuple: tuple[int, ...],
+) -> tuple[list[dict[str, str]], bool]:
+    raw = manifest.get("history")
+    if not isinstance(raw, list):
+        return [], False
+    by_version: dict[str, tuple[tuple[int, ...], str]] = {}
+    oldest_tuple: tuple[int, ...] | None = None
+    for item in raw:
+        if not isinstance(item, dict):
+            continue
+        ver = str(item.get("version") or "").strip().lstrip("v")
+        summary = str(item.get("notes") or "").strip()[:800]
+        if not ver or not summary:
+            continue
+        try:
+            ver_tuple = _version_tuple(ver)
+        except ValueError:
+            continue
+        if oldest_tuple is None or ver_tuple < oldest_tuple:
+            oldest_tuple = ver_tuple
+        if installed_tuple < ver_tuple <= latest_tuple:
+            by_version[ver] = (ver_tuple, summary)
+    ordered = sorted(by_version.items(), key=lambda pair: pair[1][0], reverse=True)
+    spanned = [{"version": ver, "notes": entry[1]} for ver, entry in ordered[:20]]
+    truncated = bool(oldest_tuple is not None and installed_tuple < oldest_tuple and latest_tuple > installed_tuple)
+    return spanned, truncated
+
+
 def evaluate_manifest(manifest: dict, *, device: str | None = None, allow_app=False) -> dict:
     installed = current_version()
     latest = str(manifest.get("version") or "").strip().lstrip("v")
@@ -247,6 +279,9 @@ def evaluate_manifest(manifest: dict, *, device: str | None = None, allow_app=Fa
             if not re.fullmatch(re.escape(GITHUB_API_URL) + r"/assets/[1-9][0-9]*", api_url):
                 raise ValueError("备用下载地址不属于官方仓库")
             asset["api_url"] = api_url
+    release_url = _https_url(manifest.get("release_url"), "发布页地址") if manifest.get("release_url") else ""
+    releases_url = update_mirror.ATOM_RELEASES if release_url.startswith(update_mirror.ATOM_RELEASES) else GITHUB_RELEASE_URL
+    history, history_truncated = _release_history(manifest, installed_tuple=installed_tuple, latest_tuple=latest_tuple)
     result = {
         "current_version": installed,
         "latest_version": latest,
@@ -255,7 +290,10 @@ def evaluate_manifest(manifest: dict, *, device: str | None = None, allow_app=Fa
         "available": supported and latest_tuple > installed_tuple,
         "installable": bool(FROZEN and supported),
         "notes": str(manifest.get("notes") or "").strip()[:4000],
-        "release_url": _https_url(manifest.get("release_url"), "发布页地址") if manifest.get("release_url") else "",
+        "history": history,
+        "history_truncated": history_truncated,
+        "release_url": release_url,
+        "releases_url": releases_url,
         "published_at": str(manifest.get("published_at") or "").strip(),
         "asset": asset,
         "unsigned_warning": "当前版本未配置代码签名，安装时系统可能显示安全警告。",

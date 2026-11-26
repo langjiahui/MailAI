@@ -152,7 +152,40 @@ const {chromium,webkit}=require('playwright');
   assert(await install.isDisabled());assert.equal(installs,3);
   await page.evaluate(()=>installAppUpdate({preventDefault(){}}));
   assert.equal(installs,3,'Restart handoff must block duplicate installation');
+  // Multi-version jump renders spanned changelog items cleanly across themes and languages.
+  await page.evaluate(()=>{
+    showAppUpdate({
+      current_version:'4.9.0',latest_version:'4.9.4',device:'macos-arm64',
+      supported:true,available:true,installable:false,
+      notes:'Fallback summary',
+      releases_url:'https://github.com/langjiahui/MailAI/releases',
+      history:[
+        {version:'4.9.4',notes:'Sent toolbar adapts to wide and narrow panes'},
+        {version:'4.9.3',notes:'Added hover icon motion to sent actions'},
+        {version:'4.9.2',notes:'Grouped secondary sent actions'},
+      ],
+      history_truncated:true,
+    });
+    setI18nLanguage('zh-CN');
+  });
+  await page.waitForFunction(()=>document.querySelectorAll('#update-dialog .update-history-item').length===3);
+  assert.match(await page.locator('#update-dialog-notes-title').innerText(),/3 个版本/);
+  assert.equal(await page.locator('#update-dialog-history-link').getAttribute('href'),'https://github.com/langjiahui/MailAI/releases');
+  assert.equal(await page.locator('#update-dialog .update-history-badge').innerText(),'最新');
+  assert(await page.locator('#update-dialog .update-history-more-link').isVisible());
+  await page.evaluate(()=>setI18nLanguage('en'));
+  assert.match(await page.locator('#update-dialog-notes-title').innerText(),/3 versions/);
+  assert.equal(await page.locator('#update-dialog .update-history-badge').innerText(),'Latest');
+  for(const theme of ['light','dark']) for(const palette of ['', 'theme_monochrome', 'theme_baowu']) {
+    await page.evaluate(({theme,palette})=>{
+      document.documentElement.dataset.theme=theme;
+      if(palette)document.documentElement.dataset.rewardTheme=palette;
+      else delete document.documentElement.dataset.rewardTheme;
+    },{theme,palette});
+    assert(await page.locator('#update-dialog').evaluate(n=>n.scrollWidth<=n.clientWidth+1),`${theme}/${palette} update dialog overflowed`);
+  }
+  await page.keyboard.press('Escape');
   assert(statusCalls>0);assert.deepEqual(errors,[]);
-  console.log('PASS bilingual checks, defer/continue via pet, uninterrupted mail, preserved progress, explicit install, canceled Installer retry and responsive static/motion states');
+  console.log('PASS bilingual checks, defer/continue via pet, uninterrupted mail, preserved progress, explicit install, canceled Installer retry, spanned multi-version changelog and responsive static/motion states');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1});

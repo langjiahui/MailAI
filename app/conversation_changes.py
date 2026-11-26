@@ -57,21 +57,31 @@ def money_change(sentence):
 
 
 class _OwnHTML(HTMLParser):
-    def __init__(self):
+    _void = frozenset(('area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'param', 'source', 'track', 'wbr'))
+
+    def __init__(self, *, exclude_signatures=False):
         super().__init__(convert_charrefs=True)
         self.parts = []
         self.depth = 0
+        self.exclude_signatures = exclude_signatures
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
-        if tag in ('blockquote', 'script', 'style') or any(x in attrs.get('class', '').lower() for x in ('gmail_quote', 'yahoo_quoted')):
+        classes = (attrs.get('class') or '').lower()
+        excluded = ('data-mailai-quote' in attrs or attrs.get('data-compose-section') == 'quote'
+                    or self.exclude_signatures and ('data-mailai-signature' in attrs
+                    or any(name in classes for name in ('gmail_signature', 'moz-signature', 'applemailsignature'))))
+        if tag not in self._void and (tag in ('blockquote', 'script', 'style') or excluded
+                                     or any(x in classes for x in ('gmail_quote', 'yahoo_quoted'))):
             self.depth += 1
-        elif self.depth and tag not in ('br', 'img', 'hr', 'input', 'meta', 'link'):
+        elif self.depth and tag not in self._void:
             self.depth += 1
         if not self.depth and tag in ('p', 'div', 'br', 'li', 'tr'):
             self.parts.append('\n')
 
     def handle_endtag(self, tag):
+        if tag in self._void:
+            return
         if self.depth:
             self.depth -= 1
         elif tag in ('p', 'div', 'li', 'tr'):
@@ -82,9 +92,9 @@ class _OwnHTML(HTMLParser):
             self.parts.append(data)
 
 
-def own_text(row, sent=False):
+def own_text(row, sent=False, *, exclude_signatures=False):
     if sent or not row.get('body_text'):
-        parser = _OwnHTML()
+        parser = _OwnHTML(exclude_signatures=exclude_signatures)
         parser.feed((row.get('body_html') or '')[:12000])
         text = ''.join(parser.parts)
     else:

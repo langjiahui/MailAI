@@ -137,6 +137,8 @@ def main():
         def memory_stream(messages,**kwargs):
             if '我平时希望小邮沟通时一次只问一个问题' in messages[-1]['content']:
                 yield '明白，我们就一次聊清一个关键问题。'
+            elif '准备学习验证草稿' in messages[-1]['content']:
+                yield '主题：测试写作习惯\n\n陈工，\n项目组先前已经多轮讨论这次方案的细节。\n方案已确认，请于周三前反馈意见。'
             else:
                 yield from original_stream(messages,**kwargs)
         memory_client.chat_completion_stream=memory_stream
@@ -147,6 +149,21 @@ def main():
             for key,account in registry['accounts'].items():
                 with use(dict(ACCOUNT_ID=key,DB_PATH=account['db_path'])):
                     with db.conn() as c:c.execute("UPDATE assistant_conversations SET updated_at='2020-01-01T00:00:00'")
+            return {'ok':True}
+        @server.app.post('/fixture/writing-sent/{key}')
+        def seed_writing_history(key: str):
+            from app import writing_memory
+            account = registry['accounts'][key]
+            target = 'writing-target@example.test'
+            with use(dict(ACCOUNT_ID=key, DB_PATH=account['db_path'], IMAP_USER=account['user'])):
+                for i in range(2):
+                    sample = dict(value='陈工，\n项目组先前已经多轮讨论这次方案的细节。\n方案已确认，请于周三前反馈意见。',
+                                  prefix='', epoch=writing_memory.epoch(), audience=[[target], [], []])
+                    row = dict(from_addr=account['user'], to_addr=target, subject=f'写作习惯样本 {i + 1}',
+                               body_html='<p>陈工，<br>方案已确认，请于周三前反馈意见。</p>')
+                    row['id'] = db.save_draft(dict(row, writing_sample={'body':sample}))
+                    db.finish_sent_message(db.create_sent_message(row), ok=True, message_id=f'<writing-{i}@example.test>')
+                    db.delete_draft(row['id'])
             return {'ok':True}
     if os.environ.get('MAILAI_GIFT_FIXTURE') == '1':
         # Ephemeral test authority exists only in this isolated fixture, never in the app.
@@ -242,6 +259,12 @@ def main():
     server.app.router.on_startup.clear()
     from app.mailbox_jobs import start_outbox
     start_outbox()
+    if os.environ.get('MAILAI_MEMORY_FIXTURE') == '1':
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from app import writing_memory
+        writing_scheduler = BackgroundScheduler(daemon=True)
+        writing_scheduler.add_job(writing_memory.run_due, 'interval', seconds=1)
+        writing_scheduler.start()
     port = int(os.environ.get('MAILAI_FIXTURE_PORT', '18795'))
     print(f'ISOLATED_FIXTURE http://127.0.0.1:{port}',flush=True)
     uvicorn.run(server.app,host='127.0.0.1',port=port,log_level='warning')

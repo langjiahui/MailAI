@@ -36,6 +36,53 @@ html[data-theme] body #compose-ai-panel .work-compose{background:transparent!imp
 html[data-theme] body #compose-ai-panel .work-compose>p,html[data-theme] body #compose-ai-panel .work-compose small{color:var(--draft-muted)}
 html[data-theme] body #compose-ai-panel .work-compose button{background:transparent!important;color:var(--draft-ink)!important;border-color:var(--draft-line)}
 html[data-theme] body #compose-ai-panel .work-compose button:hover{background:var(--draft-paper)!important}
+
+.work-memory-dialog > form > .work-dialog-source { margin-block:4px 8px; }
+.work-memory-dialog > form > [data-status]:empty { display:none; }
+.work-memory-dialog > .writing-memory-panel { margin-top:12px; padding-top:10px; }
+.writing-memory-panel > summary { font-weight:650; cursor:pointer; color:var(--desk-ink); }
+.writing-memory-panel [hidden] { display:none!important; }
+.writing-memory-panel .writing-memory-hint { margin:4px 0 6px; }
+.writing-memory-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:4px 12px; padding-block:2px 6px; }
+.writing-memory-toolbar small { color:var(--desk-muted); }
+.writing-memory-toolbar small:empty { display:none; }
+.writing-memory-controls { gap:4px; margin-inline-start:auto; }
+.writing-memory-controls label { flex-flow:row wrap; align-items:center; gap:5px; margin:0 2px 0 0; }
+.writing-memory-panel select {
+  min-height:30px; max-width:100%; padding:4px 8px; border:1px solid var(--desk-line);
+  border-radius:8px; background:var(--desk-surface); color:var(--desk-ink); font:inherit;
+}
+.writing-memory-panel button { min-height:30px; padding:4px 8px; font-size:12px; }
+html[data-theme] .work-dialog .writing-memory-controls button[data-writing-action="clear"] { border-color:transparent; }
+html[data-theme] .work-dialog .writing-memory-panel button:hover { background:var(--desk-hover); }
+.writing-memory-panel :is(select,summary,button):focus-visible { outline:2px solid var(--desk-accent); outline-offset:2px; }
+.writing-memory-row { border-top:1px solid var(--desk-line); overflow-wrap:anywhere; }
+.writing-memory-row > summary { display:grid; grid-template-columns:minmax(0,1fr) auto 8px; align-items:center; gap:8px; list-style:none; padding:5px 8px; border-radius:6px; cursor:pointer; }
+.writing-memory-row > summary::-webkit-details-marker { display:none; }
+.writing-memory-row > summary:is(:hover,:focus-visible) { background:var(--desk-hover); }
+.writing-memory-row > summary::after { content:""; width:5px; height:5px; border:solid var(--desk-muted); border-width:0 1px 1px 0; transform:rotate(-45deg); }
+.writing-memory-row[open] > summary::after { transform:rotate(45deg); }
+.writing-memory-row > summary strong { display:block; font-size:13px; line-height:1.35; }
+.writing-memory-row > summary small { display:block; color:var(--desk-muted); font-size:11px; line-height:1.45; }
+.writing-memory-row-body { padding:4px 8px 8px; }
+.writing-memory-row-body:has(.writing-memory-editor:not([hidden])) > .work-memory-item-actions { display:none; }
+.writing-memory-sources { margin-bottom:6px; }
+.writing-memory-sources > small, .writing-memory-evidence time, .writing-memory-empty { color:var(--desk-muted); }
+.writing-memory-evidence { padding:2px 0 4px; }
+.writing-memory-evidence-heading { display:flex; align-items:baseline; flex-wrap:wrap; gap:0 8px; font-size:11px; }
+html[data-theme] .work-dialog .writing-memory-evidence button[data-writing-source] { min-height:28px; max-width:100%; padding:0 2px; border-color:transparent; text-align:start; white-space:normal; overflow-wrap:anywhere; }
+.writing-memory-evidence button[data-writing-source]:hover { text-decoration:underline; }
+.writing-memory-comparison { font-size:12px; }
+.writing-memory-comparison > summary { cursor:pointer; color:var(--desk-muted); padding-inline:2px; }
+.writing-memory-diff { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.writing-memory-diff blockquote { margin:4px 0; padding:6px 8px; border-radius:6px; background:var(--desk-muted-surface); white-space:pre-wrap; }
+.writing-memory-diff ins { text-decoration:none; color:var(--desk-accent); font-weight:600; }
+.writing-memory-diff del { color:var(--desk-muted); }
+.writing-memory-empty { margin:4px 0 0; font-size:12px; }
+.writing-memory-editor label { margin:4px 0 8px; }
+.compose-ai-writing-memory { margin:8px 0; color:var(--draft-muted); font-size:12px; overflow-wrap:anywhere; }
+.compose-ai-writing-memory:empty { display:none; }
+@media(max-width:600px) { .writing-memory-diff { grid-template-columns:1fr; gap:0; } }
 html[data-theme] body #compose-ai-panel .work-compose :is(button,input):focus-visible{outline-color:var(--desk-accent)}
 /* A mail-specific conversation starts compactly beside its source. */
 #assistant-panel .assistant-welcome.assistant-conversation-guide{display:grid;grid-template-columns:48px minmax(0,1fr);align-items:center;gap:14px 12px;margin:12px 0 auto;padding:0 0 16px;max-width:100%;box-sizing:border-box}

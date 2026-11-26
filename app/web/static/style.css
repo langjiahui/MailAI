@@ -2867,7 +2867,7 @@ body { font-size: 13px; background: var(--bg); }
 .app-release-summary > div { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:6px; }
 .app-release-summary small { color:var(--muted); font-size:10px; }
 .app-release-summary strong { color:var(--primary); font-size:11px; }
-.app-update-card .app-release-summary p { color:var(--text); font-size:11px; line-height:1.7; white-space:pre-wrap; }
+.app-update-card .app-release-summary :is(p,.app-release-summary-notes) { color:var(--text); font-size:11px; line-height:1.7; white-space:pre-wrap; }
 .app-update-card .app-update-policy { max-width:680px; margin-top:13px; font-size:11px; line-height:1.65; }
 .app-update-actions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; flex:none; min-width:300px; }
 .app-update-actions #btn-check-update { grid-column:1 / -1; }
@@ -2896,7 +2896,10 @@ body { font-size: 13px; background: var(--bg); }
 .update-dialog header small { color:var(--muted); }
 .update-dialog header > button { border:0; background:transparent; font-size:22px; color:var(--muted); cursor:pointer; }
 .update-dialog-release { margin:18px 0 14px; }
-.update-dialog-release > small { display:block; margin:0 0 7px; color:var(--primary); font-size:10px; font-weight:750; }
+.update-dialog-release-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 7px; }
+.update-dialog-release-head > small { display:block; margin:0; color:var(--primary); font-size:10px; font-weight:750; }
+.update-dialog-history-link { font-size:11px; font-weight:600; color:var(--primary); text-decoration:none; }
+.update-dialog-history-link:hover { text-decoration:underline; }
 .update-dialog-notes { max-height:180px; overflow:auto; white-space:pre-wrap; margin:0; padding:14px; border-radius:12px; background:var(--surface-soft); font-size:12px; line-height:1.65; }
 .update-download-progress { display:grid; gap:9px; margin:14px 0; padding:14px; border:1px solid rgba(58,130,97,.18); border-radius:13px; background:rgba(229,243,235,.62); }
 .update-download-progress > div { display:flex; align-items:center; justify-content:space-between; gap:14px; }

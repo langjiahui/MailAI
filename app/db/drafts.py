@@ -11,16 +11,19 @@ def save_draft(data: dict, draft_id: int | None = None, *, document_reply_key: s
                expected_revision=None, strict=False, return_revision=False):
     now = datetime.now().isoformat(timespec="seconds")
     fields = ("to_addr", "cc_addr", "bcc_addr", "subject", "body_html", "attachments_json",
-              "reply_to_email_id", "mode", "in_reply_to", "references_header", "source_draft_email_id", "send_at", "followup_days", "followup_at")
+              "reply_to_email_id", "mode", "in_reply_to", "references_header", "source_draft_email_id", "send_at", "followup_days", "followup_at",
+              "writing_sample")
     data = dict(data)
     data["references_header"] = data.get("references", "")
     data["attachments_json"] = json.dumps(data.get("attachments") or [], ensure_ascii=False)
     data['send_at'] = data.get('send_at') or ''
     data['followup_days'] = data.get('followup_days') or 0
     data['followup_at'] = data.get('followup_at') or ''
-    values = [data.get(k) for k in fields]
     with conn() as c:
         c.execute('BEGIN IMMEDIATE')
+        from ..writing_memory import encode_baseline
+        data['writing_sample'] = encode_baseline(c, data.get('writing_sample'))
+        values = [data.get(k) for k in fields]
         if draft_id:
             if strict and c.execute("SELECT 1 FROM outbox WHERE status IN ('queued','sending','unknown') AND json_extract(payload,'$.id')=?", (draft_id,)).fetchone():
                 raise ValueError('草稿已有发送任务，请先取消发送或核对结果')
@@ -31,15 +34,15 @@ def save_draft(data: dict, draft_id: int | None = None, *, document_reply_key: s
                 raise ValueError('草稿已在其他窗口更新；当前文字仍保留，请复制后重新打开最新草稿')
             c.execute(
                 "UPDATE drafts SET to_addr=?,cc_addr=?,bcc_addr=?,subject=?,body_html=?,attachments_json=?,"
-                "reply_to_email_id=?,mode=?,in_reply_to=?,references_header=?,source_draft_email_id=?,send_at=?,followup_days=?,followup_at=?,updated_at=?,document_reply_key=NULL,revision=revision+1 WHERE id=?",
+                "reply_to_email_id=?,mode=?,in_reply_to=?,references_header=?,source_draft_email_id=?,send_at=?,followup_days=?,followup_at=?,writing_sample=?,updated_at=?,document_reply_key=NULL,revision=revision+1 WHERE id=?",
                 (*values, now, draft_id),
             )
             if c.execute("SELECT changes() AS n").fetchone()["n"]:
                 return (draft_id, current['revision']+1) if return_revision else draft_id
         if document_reply_key:
             cur = c.execute(
-                "INSERT OR IGNORE INTO drafts(to_addr,cc_addr,bcc_addr,subject,body_html,attachments_json,reply_to_email_id,mode,in_reply_to,references_header,source_draft_email_id,send_at,followup_days,followup_at,created_at,updated_at,document_reply_key) "
-                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*values, now, now, document_reply_key),
+                "INSERT OR IGNORE INTO drafts(to_addr,cc_addr,bcc_addr,subject,body_html,attachments_json,reply_to_email_id,mode,in_reply_to,references_header,source_draft_email_id,send_at,followup_days,followup_at,writing_sample,created_at,updated_at,document_reply_key) "
+                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*values, now, now, document_reply_key),
             )
             if cur.rowcount:
                 return cur.lastrowid
@@ -48,8 +51,8 @@ def save_draft(data: dict, draft_id: int | None = None, *, document_reply_key: s
                 return existing['id']
             raise RuntimeError('无法保存回复草稿')
         cur = c.execute(
-            "INSERT INTO drafts(to_addr,cc_addr,bcc_addr,subject,body_html,attachments_json,reply_to_email_id,mode,in_reply_to,references_header,source_draft_email_id,send_at,followup_days,followup_at,created_at,updated_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*values, now, now),
+            "INSERT INTO drafts(to_addr,cc_addr,bcc_addr,subject,body_html,attachments_json,reply_to_email_id,mode,in_reply_to,references_header,source_draft_email_id,send_at,followup_days,followup_at,writing_sample,created_at,updated_at) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", (*values, now, now),
         )
         return (cur.lastrowid, 1) if return_revision else cur.lastrowid
 
@@ -77,11 +80,13 @@ def list_drafts():
     return rows
 
 
-def get_draft(draft_id: int):
+def get_draft(draft_id: int, *, include_writing_sample=False):
     with conn() as c:
         row = c.execute("SELECT * FROM drafts WHERE id=?", (draft_id,)).fetchone()
         result = dict(row) if row else None
     if result:
+        if not include_writing_sample:
+            result.pop('writing_sample', None)
         result["references"] = result.get("references_header") or ""
         try: result["attachments"] = json.loads(result.get("attachments_json") or "[]")
         except json.JSONDecodeError: result["attachments"] = []
@@ -108,11 +113,12 @@ def create_sent_message(data: dict) -> int:
     now = datetime.now().isoformat(timespec="seconds")
     with conn() as c:
         cur = c.execute(
-            "INSERT INTO sent_messages(message_id,from_addr,to_addr,cc_addr,bcc_addr,subject,body_html,attachments_json,status,created_at) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO sent_messages(message_id,from_addr,to_addr,cc_addr,bcc_addr,subject,body_html,attachments_json,status,created_at,writing_scene,writing_sample) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?,COALESCE((SELECT writing_sample FROM drafts WHERE id=? AND subject=? AND body_html=?),''))",
             (data.get("message_id"), data.get("from_addr"), data.get("to_addr"),
              data.get("cc_addr"), data.get("bcc_addr"), data.get("subject"),
-             data.get("body_html"), json.dumps(data.get("attachments") or [], ensure_ascii=False), "sending", now),
+             data.get("body_html"), json.dumps(data.get("attachments") or [], ensure_ascii=False), "sending", now,
+             'forward' if data.get('mode') == 'forward' else '', data.get('id'), data.get('subject'), data.get('body_html')),
         )
         record_id = cur.lastrowid
         if data.get('mode') != 'forward':
@@ -133,6 +139,8 @@ def finish_sent_message(record_id: int, *, ok: bool, error: str = "",
             ("sent" if ok else "failed", error, smtp_response, sent_folder,
              datetime.now().isoformat(timespec="seconds") if ok else None, message_id, record_id),
         )
+        if not ok:
+            c.execute("UPDATE sent_messages SET writing_sample='' WHERE id=? AND writing_sample<>''", (record_id,))
 
         if ok and c.execute('SELECT 1 FROM sent_messages WHERE id=?', (record_id,)).fetchone():
             from ..companion_growth import safe_record
@@ -163,6 +171,8 @@ def get_sent_message(record_id: int):
         row = c.execute("SELECT * FROM sent_messages WHERE id=?", (record_id,)).fetchone()
         result = dict(row) if row else None
     if result:
+        result.pop('writing_sample', None)
+        result.pop('writing_scene', None)
         try:
             result["attachments"] = json.loads(result.get("attachments_json") or "[]")
         except json.JSONDecodeError:

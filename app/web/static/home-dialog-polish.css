@@ -201,14 +201,57 @@ html[data-theme][data-theme] body #update-dialog header>button {
 }
 html[data-theme][data-theme] body #update-dialog header>button:hover { background:var(--desk-hover)!important; }
 html[data-theme][data-theme] body #update-dialog .update-dialog-release { margin:18px 0; }
-html[data-theme][data-theme] body #update-dialog .update-dialog-release>small {
-  color:var(--desk-muted)!important; font-size:11px; font-weight:600;
+html[data-theme][data-theme] body #update-dialog .update-dialog-release-head {
+  display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 8px;
+}
+html[data-theme][data-theme] body #update-dialog .update-dialog-release-head>small {
+  color:var(--desk-muted)!important; font-size:11px; font-weight:600; margin:0;
+}
+html[data-theme][data-theme] body #update-dialog .update-dialog-history-link,
+html[data-theme][data-theme] body :is(#update-dialog,.app-release-summary) .update-history-more-link {
+  flex:none; color:var(--desk-accent)!important; font-size:11px; font-weight:600;
+  text-decoration:none; border-radius:6px;
+}
+html[data-theme][data-theme] body #update-dialog .update-dialog-history-link:hover,
+html[data-theme][data-theme] body :is(#update-dialog,.app-release-summary) .update-history-more-link:hover {
+  text-decoration:underline;
+}
+html[data-theme][data-theme] body #update-dialog :is(.update-dialog-history-link,.update-history-more-link):focus-visible {
+  outline:2px solid var(--desk-accent)!important; outline-offset:2px;
 }
 html[data-theme][data-theme] body #update-dialog .update-dialog-notes {
   max-height:min(180px,calc(26dvh / var(--fz,1)));
   padding:0 4px 0 0; border:0!important; border-radius:0;
   background:transparent!important; color:var(--desk-ink)!important;
   font-size:12px; line-height:1.85; overflow-wrap:anywhere;
+}
+html[data-theme][data-theme] body :is(#update-dialog,.app-release-summary) .update-history-list {
+  display:grid; gap:10px; white-space:normal;
+}
+html[data-theme][data-theme] body :is(#update-dialog,.app-release-summary) .update-history-item {
+  padding-top:10px; border-top:1px solid var(--desk-line);
+}
+html[data-theme][data-theme] body :is(#update-dialog,.app-release-summary) .update-history-item:first-child {
+  padding-top:0; border-top:0;
+}
+html[data-theme][data-theme] body :is(#update-dialog,.app-release-summary) .update-history-meta {
+  display:flex; align-items:center; gap:8px; margin-bottom:4px;
+}
+html[data-theme][data-theme] body :is(#update-dialog,.app-release-summary) .update-history-version {
+  color:var(--desk-ink)!important; font-size:12px; font-weight:650; font-variant-numeric:tabular-nums;
+}
+html[data-theme][data-theme] body :is(#update-dialog,.app-release-summary) .update-history-badge {
+  display:inline-flex; align-items:center; padding:1px 7px; border-radius:999px;
+  background:var(--desk-selected)!important; color:var(--desk-accent)!important;
+  font-size:10px; font-weight:650; line-height:1.6;
+}
+html[data-theme][data-theme] body :is(#update-dialog,.app-release-summary) .update-history-copy {
+  margin:0; padding:0; max-width:none; color:var(--desk-muted)!important;
+  font-size:12px; line-height:1.7; overflow-wrap:anywhere;
+}
+html[data-theme][data-theme] body :is(#update-dialog,.app-release-summary) .update-history-more {
+  margin:0; padding:8px 0 0; max-width:none; border-top:1px solid var(--desk-line);
+  color:var(--desk-muted)!important; font-size:11px; line-height:1.65;
 }
 html[data-theme][data-theme] body #update-dialog .update-download-progress {
   gap:8px; margin:16px 0; padding:12px 14px;

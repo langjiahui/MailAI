@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 """接口请求模型（Pydantic）。从 server.py 集中拆分，供各路由模块复用。"""
 from pydantic import BaseModel, Field
 
@@ -76,6 +76,9 @@ class ComposeAssistRequest(BaseModel):
     original_text: str = ""
     user_instruction: str = ""
     recipients: str = ""
+    recipient_fields: dict[str, str] | None = None
+    automatic_tone: bool = False
+    automatic_length: bool = False
     attachment_names: list[str] = Field(default_factory=list)
     tone: str = "正式"
     length: str = "适中"
@@ -185,6 +188,7 @@ class ModelConfigRequest(BaseModel):
 
 
 class DraftRequest(BaseModel):
+    writing_sample: Any = None
     expected_revision: int | None = Field(default=None, ge=1)
     send_at: str = ''
     followup_days: int = Field(default=0,ge=0,le=90)

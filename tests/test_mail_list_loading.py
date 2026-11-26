@@ -124,12 +124,16 @@ def test_legacy_identity_recovery():
 
 
 def test_special_and_unified():
+    from app.web.routes import compose, mail_read
     with fixture() as (root,values):
         seed(3)
         sent=db.create_sent_message({'from_addr':'me@example.test','to_addr':'recipient@example.test','subject':'Local receipt','body_html':'<p>hello</p>','attachments':[{'filename':'large.bin','data_base64':'A'*100000,'size':75000}]})
         db.finish_sent_message(sent,ok=True,message_id='same@example.test')
         db.upsert_email({'uid':20,'status':'sent','message_id':'same@example.test','subject':'Server duplicate','date':'2026-11-03','raw_path':'/do-not-read','body_html':'HUGE BODY'})
-        db.upsert_email({'uid':21,'status':'sent','subject':'Server only','date':'2026-11-03','raw_path':'/do-not-read','body_html':'HUGE BODY'})
+        server_only=db.upsert_email({'uid':21,'status':'sent','subject':'Server only','date':'2026-11-03','raw_path':'/do-not-read','body_html':'HUGE BODY'})
+        # Stale hidden duplicate with the same Message-ID must not block deleting the active copy.
+        with db.conn() as c:
+            c.execute("INSERT INTO emails(uid,status,message_id,subject,date,remote_missing,raw_path) VALUES(99,'sent','same@example.test','Stale duplicate','2026-11-01',1,'/do-not-read')")
         db.save_draft({'subject':'Draft','body_html':'<p>draft</p>'})
         with patch('app.web.routes.compose.extract_rich_body',side_effect=AssertionError('List reconstructed body')):
             result=mail_list.page({'special':'sent'})
@@ -141,6 +145,22 @@ def test_special_and_unified():
             db.finish_sent_message(receipt,ok=True,message_id='local-only@example.test')
             for scope in ({'status':'inbox'},{'special':'sent'},{'special':'drafts'}):
                 assert mail_list.page(scope)['counts']['totals']['sent']==3
+        # Deleting a remote-only sent message removes it from Sent and is idempotent on repeat calls.
+        deleted=compose.api_delete_sent_message(-server_only)
+        assert deleted['completed']==1 and not deleted['failed']
+        assert mail_list.page({'special':'sent'})['total']==2
+        assert compose.api_delete_sent_message(-server_only).get('already_trashed') is True
+        # Deleting a receipt-backed sent message ignores stale duplicates and keeps receipts hidden across trash phases.
+        deleted_local=compose.api_delete_sent_message(sent)
+        assert deleted_local['completed']==1 and not deleted_local['failed']
+        assert mail_list.page({'special':'sent'})['total']==1
+        with db.conn() as c:
+            c.execute("UPDATE emails SET pending_action='trash_local' WHERE uid=20")
+        assert mail_list.page({'special':'sent'})['total']==1
+        assert mail_list.page({'special':'sent'})['counts']['totals']['sent']==1
+        assert mail_read.api_mailbox_counts()['totals']['sent']==1
+        assert all(item.get('id')!=sent for item in compose.api_sent_messages())
+        assert compose.api_delete_sent_message(sent).get('already_trashed') is True
         other=dict(values,ACCOUNT_ID='other',DB_PATH=str(root/'other.db'),IMAP_USER='other@example.test')
         with use(other):db.init_db();seed(3)
         registry={'accounts':{key:{'db_path':v['DB_PATH'],'user':v['IMAP_USER']} for key,v in [('a',values),('b',other)]}}

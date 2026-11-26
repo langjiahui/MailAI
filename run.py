@@ -48,9 +48,11 @@ def _open_browser():
 
 def _start_scheduler():
     from datetime import datetime, timedelta
+    from apscheduler.executors.pool import ThreadPoolExecutor
     from app.mailbox_jobs import start_outbox
     from app.automatic_backup import run_due as run_automatic_backups
     from app.automatic_server_cleanup import run_due as run_automatic_cleanup
+    from app.writing_memory import run_due as run_writing_memory
     start_outbox()
     scheduler = BackgroundScheduler()
     scheduler.add_job(
@@ -67,6 +69,9 @@ def _start_scheduler():
     scheduler.add_job(run_automatic_cleanup, "interval", minutes=5,
                       next_run_time=datetime.now() + timedelta(minutes=3),
                       id="automatic_server_cleanup", max_instances=1, coalesce=True)
+    scheduler.add_executor(ThreadPoolExecutor(max_workers=1), alias='writing_memory')
+    scheduler.add_job(run_writing_memory, 'interval', seconds=20, executor='writing_memory',
+                      id='writing_memory', max_instances=1, coalesce=True)
     scheduler.start()
     from app.dingtalk_remote import start as start_remote
     from app.weixin_remote import start as start_weixin

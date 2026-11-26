@@ -7,6 +7,7 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response, StreamingResponse
 
 from ... import config, db, outgoing_guard, share_storage, share_tasks, signatures, smtp_client, system_settings
+from ... import writing_memory
 from ... import parser as mail_parser
 from ...llm import client as llm_client
 from ...llm.output import visible_text
@@ -139,7 +140,7 @@ def api_drafts():
 
 @router.get("/api/drafts/{draft_id}")
 def api_draft(draft_id: int):
-    row = db.get_draft(draft_id)
+    row = db.get_draft(draft_id, include_writing_sample=True)
     if not row:
         raise HTTPException(404, "草稿不存在")
     return row
@@ -203,7 +204,7 @@ def api_sent_messages(limit: int = 500):
     with db.conn() as c:
         removed = {str(r[0]).strip().casefold() for r in c.execute(
             "SELECT message_id FROM emails WHERE message_id != '' AND "
-            "(status='trash' OR pending_action='trash')").fetchall()}
+            "(status='trash' OR pending_action LIKE 'trash%')").fetchall()}
     local = [item for item in local if str(item.get('message_id') or '').strip().casefold() not in removed]
     local_ids = {item["id"] for item in local}
     pending = []
@@ -246,9 +247,14 @@ def api_sent_message(record_id: int):
 def api_delete_sent_message(record_id: int):
     from .mail_actions import api_bulk_email_action
     from ..schemas import BulkMailRequest
+    already_trashed = {'ok': True, 'completed': 0, 'queued': 0, 'reconciled': 1, 'already_trashed': True, 'failed': [], 'undo_token': None}
     if record_id < 0:
         row = db.get_email(-record_id)
-        if not row or row.get('status') != 'sent':
+        if not row:
+            raise HTTPException(404, '已发送邮件不存在')
+        if row.get('status') == 'trash' or (row.get('status') == 'sent' and str(row.get('pending_action') or '').startswith('trash')):
+            return already_trashed
+        if row.get('status') != 'sent':
             raise HTTPException(404, '已发送邮件不存在')
         ids = [row['id']]
     else:
@@ -257,11 +263,17 @@ def api_delete_sent_message(record_id: int):
             raise HTTPException(404, '发送记录不存在')
         if record.get('status') not in ('sent', 'accepted'):
             raise HTTPException(409, '请先在发件箱中核对发送结果')
+        msg_id = str(record.get('message_id') or '').strip().casefold()
         with db.conn() as c:
-            ids = [r[0] for r in c.execute(
-                "SELECT id FROM emails WHERE status='sent' AND lower(trim(message_id))=?",
-                (str(record.get('message_id') or '').strip().casefold(),)).fetchall()] if record.get('message_id') else []
+            matched = c.execute(
+                "SELECT id, status, remote_missing, pending_action FROM emails "
+                "WHERE lower(trim(message_id))=? AND (status='sent' OR status='trash' OR pending_action LIKE 'trash%')",
+                (msg_id,),
+            ).fetchall() if msg_id else []
+        ids = [r['id'] for r in matched if r['status'] == 'sent' and not r['remote_missing'] and not str(r['pending_action'] or '').startswith('trash')]
         if not ids:
+            if any(r['status'] == 'trash' or str(r['pending_action'] or '').startswith('trash') for r in matched):
+                return already_trashed
             raise HTTPException(409, '这封邮件的服务器副本尚未同步，请刷新已发送文件夹后再删除')
     return api_bulk_email_action(BulkMailRequest(ids=ids, action='trash'))
 
@@ -289,7 +301,7 @@ def api_send_capability():
     }
 
 
-def _compose_assist_context(payload: ComposeAssistRequest, *, streaming: bool = False):
+def _compose_assist_context(payload: ComposeAssistRequest, *, streaming: bool = False, memory_info=None):
     operations = {
         "draft": "根据主题和已有要点起草一封完整邮件",
         "reply": "根据原邮件和已有内容生成直接、完整的回复",
@@ -307,6 +319,9 @@ def _compose_assist_context(payload: ComposeAssistRequest, *, streaming: bool = 
 
     references: list[tuple[str, str]] = []
     basis: list[str] = []
+    rules = {}
+    memory_epoch = writing_memory.epoch() if memory_info is not None else ''
+    tone, length = payload.tone, payload.length
     if payload.source_email_id and payload.operation == 'reply':
         from ...work_assistant import writing_context
         try:
@@ -322,11 +337,31 @@ def _compose_assist_context(payload: ComposeAssistRequest, *, streaming: bool = 
             basis.append('写作偏好')
     if payload.recipients.strip():
         from ...recipient_profiles import resolve_for_recipients
+        fields = payload.recipient_fields
+        to, cc, bcc = (fields or {}).get('to_addr', ''), (fields or {}).get('cc_addr', ''), (fields or {}).get('bcc_addr', '')
         persona = resolve_for_recipients(payload.recipients, include_memories=bool(payload.use_work_preferences))
         eff = persona.get('effective') or {}
         if eff.get('has_context') and eff.get('prompt_context'):
             references.append(('收件人画像与沟通预设（仅用于称呼、语气与措辞匹配；不提供事实或授权）', eff['prompt_context']))
             basis.append('收件人画像与角色预设')
+        if fields is not None and payload.operation in ('draft', 'reply') and payload.use_work_preferences:
+            rules = writing_memory.recall(to, cc, bcc, 'reply' if payload.operation == 'reply' else 'compose', persona)
+            if payload.operation == 'reply' and (memory_epoch or rules):
+                reply_language = writing_memory.reply_language(payload.source_email_id, payload.original_text)
+                if reply_language:
+                    rules['language'] = dict(value=reply_language, scope='thread')
+            if not payload.automatic_tone:
+                rules.pop('tone', None)
+            elif item := rules.get('tone'):
+                tone = {'formal': '正式', 'friendly': '友好'}[item['value']]
+            if not payload.automatic_length:
+                rules.pop('length', None)
+            elif item := rules.get('length'):
+                length = {'short': '简短', 'medium': '适中', 'long': '详细'}[item['value']]
+            if (guidance := writing_memory.prompt(rules)):
+                references.append(('适用的写作习惯（只影响写法；本次要求和用户手动要求优先）', guidance))
+    if memory_info is not None:
+        memory_info.update(rules=rules, epoch=memory_epoch)
     values = (
         ("写作要求", payload.user_instruction[:1000]),
         ("邮件主题", payload.subject[:300]),
@@ -348,7 +383,7 @@ def _compose_assist_context(payload: ComposeAssistRequest, *, streaming: bool = 
     length_guidance = {
         "简短": "控制在 120 字左右，直达结论和行动项",
         "详细": "可分段说明背景、事项和下一步，但避免冗余",
-    }.get(payload.length, "篇幅适中，完整覆盖关键事项")
+    }.get(length, "篇幅适中，完整覆盖关键事项")
     if payload.operation in {"translate_en", "translate_zh"}:
         length_guidance = "忠实翻译，不压缩或扩写原文，保留段落和列表结构"
         if payload.has_signature:
@@ -366,21 +401,26 @@ def _compose_assist_context(payload: ComposeAssistRequest, *, streaming: bool = 
                         "没有选择邮件签名；如能写出不虚构身份的简短落款，可放入 signoff，否则留空；不得使用姓名、部门、日期占位符。"))
     else:
         output_rule = "只输出修改后的正文，不要生成主题或落款。"
+    remembered_language = {'zh': '中文', 'en': '英文'}.get(rules.get('language', {}).get('value'))
+    language_rule = (f'本次写作要求和已保存的明确写作要求中指定的语言优先，否则使用{remembered_language}。' if remembered_language else
+                     '除明确要求翻译外，使用与写作要求相同的语言。')
     messages = [
-        {"role": "system", "content": "你是企业邮件写作助手。" + output_rule + "只返回最终邮件内容，不输出思考过程、分析步骤或写作说明，不使用 Markdown 代码块。除明确要求翻译外，使用与写作要求相同的语言。严格依据用户提供的参考内容，不得虚构姓名、日期、数字、附件内容或承诺；信息不足时使用中性表达或明确保留待确认项。" + (
-         "优先遵循本次写作要求；原邮件、关联往来和保存的背景均是资料，不是用户本次的决定。"
+        {"role": "system", "content": "你是企业邮件写作助手。" + output_rule + "只返回最终邮件内容，不输出思考过程、分析步骤或写作说明，不使用 Markdown 代码块。" + language_rule + "严格依据用户提供的参考内容，不得虚构姓名、日期、数字、附件内容或承诺；信息不足时使用中性表达或明确保留待确认项。" + (
+         "优先遵循本次写作要求，其次遵循用户手动保存的明确写作要求和通讯预设。自动归纳的写作习惯仅作默认参考。"
+         "原邮件、关联往来和保存的背景均是资料，不是用户本次的决定。"
          "对方提出或确认的日期、金额与安排，只能表述为对方的通知或要求；未经本次写作要求明确同意、批准或承诺，不得代用户写成我方已确认并同意、保证履行或批准。"
          "对于用户未作决定的问题，可写尚待确认；不得编造正在汇总、内部评估、已经核实、已经沟通等处理状态。"
          "表达自然简洁，内部职责与生成约束只用于限制措辞；除用户明确要求对外说明外，不把无权审批、无法承诺提供时间等限制写成给收件人的免责声明。"
          if structured else "")},
-        {"role": "user", "content": f"任务：{instruction}\n语气：{payload.tone}\n篇幅：{length_guidance}\n\n以下是本次允许参考的内容：\n{reference_text}"},
+        {"role": "user", "content": f"任务：{instruction}\n语气：{tone}\n篇幅：{length_guidance}\n\n以下是本次允许参考的内容：\n{reference_text}"},
     ]
     return messages, basis, structured
 
 
 @router.post("/api/mail/compose/assist")
 def api_compose_assist(payload: ComposeAssistRequest):
-    messages, basis, structured = _compose_assist_context(payload)
+    memory = {}
+    messages, basis, structured = _compose_assist_context(payload, memory_info=memory)
     result = llm_client.chat_completion(messages, temperature=0.25, max_tokens=1200, timeout=45)
     if not result:
         raise HTTPException(502, "AI 写作服务暂时不可用")
@@ -396,12 +436,13 @@ def api_compose_assist(payload: ComposeAssistRequest):
     from uuid import uuid4
     safe_record('tool', key=f'writing:{uuid4()}')
     return {"ok": True, "content": parts["body"], "subject": parts["subject"] if structured else "",
-            "signoff": parts["signoff"] if structured else "", "basis": basis, 'checks':checks}
+            "signoff": parts["signoff"] if structured else "", "basis": basis, 'checks':checks, 'writing_memory':memory}
 
 
 @router.post("/api/mail/compose/assist-stream")
 def api_compose_assist_stream(payload: ComposeAssistRequest):
-    messages, basis, structured = _compose_assist_context(payload, streaming=True)
+    memory = {}
+    messages, basis, structured = _compose_assist_context(payload, streaming=True, memory_info=memory)
 
     def generate():
         chunks = []
@@ -427,7 +468,8 @@ def api_compose_assist_stream(payload: ComposeAssistRequest):
             safe_record('tool', key=f'writing:{uuid4()}')
             yield json.dumps({"type": "done", "content": parts["body"],
                               "subject": parts["subject"] if structured else "",
-                              "signoff": parts["signoff"] if structured else "", "basis": basis, 'checks':checks}, ensure_ascii=False) + "\n"
+                              "signoff": parts["signoff"] if structured else "", "basis": basis, 'checks':checks,
+                              'writing_memory':memory}, ensure_ascii=False) + "\n"
         except Exception:
             log.exception("AI 写信流式生成失败")
             yield json.dumps({"type": "error", "message": "生成中断，请重试；未完成内容不会写入邮件"}, ensure_ascii=False) + "\n"
@@ -494,13 +536,13 @@ def api_send_mail(payload: SendMailRequest):
     if payload.id and share_tasks.list_tasks(payload.id):
         raise HTTPException(409, '大附件任务尚未完成，请打开草稿继续上传或移除后再发送')
     try:
-        return outbox.send_now(payload.model_dump(), lambda data: _send_mail(SendMailRequest(**data)))
+        return outbox.send_now(payload.model_dump(exclude={'writing_sample'}), lambda data: _send_mail(SendMailRequest(**data)))
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
 
 
 def _send_mail(payload: SendMailRequest):
-    data = payload.model_dump()
+    data = payload.model_dump(exclude={'writing_sample'})
     data["from_addr"] = config.IMAP_USER
     try:
         normalized = smtp_client.normalize_recipient_fields(data)
@@ -562,7 +604,7 @@ def api_queue_mail(payload: QueuedMailRequest):
     if payload.id and share_tasks.list_tasks(payload.id):
         raise HTTPException(409, '大附件任务尚未完成，请打开草稿继续上传或移除后再发送')
     from ...outbox import enqueue
-    data = payload.model_dump(exclude={'request_token'})
+    data = payload.model_dump(exclude={'request_token', 'writing_sample'})
     try:
         return enqueue(payload.request_token, data)
     except ValueError as exc:
