@@ -15,7 +15,7 @@ from ...parser import extract_rich_body
 from ..helpers import annotate_list_identities, current_server
 from ..schemas import (ComposeAssistRequest, DraftRequest, MailPreflightRequest,
                        QueuedMailRequest, SendMailRequest, ShareStorageConfigRequest, SignatureGenerateRequest,
-                       SignatureRequest)
+                       SignatureRequest, SentTrashRequest)
 
 log = logging.getLogger(__name__)
 router = APIRouter()
@@ -243,39 +243,88 @@ def api_sent_message(record_id: int):
     return row
 
 
+@router.get('/api/mail/sent/{record_id}/preview')
+def api_sent_preview(record_id: int):
+    with db.conn() as c:
+        if record_id < 0:
+            row = c.execute('''SELECT substr(body_text,1,4000) body_text,substr(body_html,1,16000) body_html,
+                substr(snippet,1,4000) snippet FROM emails WHERE id=? AND status='sent' AND remote_missing=0''',
+                            (-record_id,)).fetchone()
+        else:
+            row = c.execute('''SELECT '' body_text,substr(body_html,1,16000) body_html,'' snippet FROM sent_messages
+                WHERE id=? AND status IN ('sent','accepted')''', (record_id,)).fetchone()
+    if not row:
+        raise HTTPException(404, '已发送邮件不存在')
+    text = (row['body_text'] or '').strip() or mail_parser.strip_html(row['body_html']) or row['snippet'] or ''
+    return {'body_text': text[:4000]}
+
+
 @router.delete("/api/mail/sent/{record_id}")
 def api_delete_sent_message(record_id: int):
-    from .mail_actions import api_bulk_email_action
-    from ..schemas import BulkMailRequest
-    already_trashed = {'ok': True, 'completed': 0, 'queued': 0, 'reconciled': 1, 'already_trashed': True, 'failed': [], 'undo_token': None}
+    result = _trash_sent_records([record_id])
+    if result['failed'] and not result['queued']:
+        failure = result['failed'][0]
+        raise HTTPException(failure['status'], failure['error'])
+    if result['reconciled']:
+        return {**result, 'completed': 0, 'already_trashed': True}
+    return result
+
+
+@router.post('/api/mail/sent/bulk-trash')
+def api_bulk_trash_sent(payload: SentTrashRequest):
+    return _trash_sent_records(list(dict.fromkeys(payload.ids)))
+
+
+def _sent_trash_targets(c, record_id):
     if record_id < 0:
-        row = db.get_email(-record_id)
-        if not row:
+        row = c.execute('SELECT id,status,remote_missing,pending_action FROM emails WHERE id=?', (-record_id,)).fetchone()
+        if not row or row['status'] not in ('sent', 'trash'):
             raise HTTPException(404, '已发送邮件不存在')
-        if row.get('status') == 'trash' or (row.get('status') == 'sent' and str(row.get('pending_action') or '').startswith('trash')):
-            return already_trashed
-        if row.get('status') != 'sent':
-            raise HTTPException(404, '已发送邮件不存在')
-        ids = [row['id']]
+        matched = [row]
     else:
-        record = db.get_sent_message(record_id)
-        if not record:
+        receipt = c.execute('SELECT message_id,status FROM sent_messages WHERE id=?', (record_id,)).fetchone()
+        if not receipt:
             raise HTTPException(404, '发送记录不存在')
-        if record.get('status') not in ('sent', 'accepted'):
+        if receipt['status'] not in ('sent', 'accepted'):
             raise HTTPException(409, '请先在发件箱中核对发送结果')
-        msg_id = str(record.get('message_id') or '').strip().casefold()
-        with db.conn() as c:
-            matched = c.execute(
-                "SELECT id, status, remote_missing, pending_action FROM emails "
-                "WHERE lower(trim(message_id))=? AND (status='sent' OR status='trash' OR pending_action LIKE 'trash%')",
-                (msg_id,),
-            ).fetchall() if msg_id else []
-        ids = [r['id'] for r in matched if r['status'] == 'sent' and not r['remote_missing'] and not str(r['pending_action'] or '').startswith('trash')]
+        message_id = str(receipt['message_id'] or '').strip().casefold()
+        matched = c.execute('''SELECT id,status,remote_missing,pending_action FROM emails
+            WHERE lower(trim(message_id))=? AND (status IN ('sent','trash') OR pending_action LIKE 'trash%')''',
+                            (message_id,)).fetchall() if message_id else []
+    trashed = {row['id'] for row in matched if row['status'] == 'trash' or (row['pending_action'] or '').startswith('trash')}
+    targets = {row['id'] for row in matched if row['status'] == 'sent' and not row['remote_missing'] and row['id'] not in trashed}
+    if not targets and not trashed:
+        raise HTTPException(409, '这封邮件的服务器副本尚未同步，请刷新已发送文件夹后再删除')
+    return targets
+
+
+def _trash_sent_records(record_ids):
+    from ...mail_undo import record
+
+    targets, failed = {}, []
+    with db.conn() as c:
+        c.execute('BEGIN IMMEDIATE')
+        for record_id in record_ids:
+            try:
+                targets[record_id] = _sent_trash_targets(c, record_id)
+            except HTTPException as exc:
+                failed.append({'id': record_id, 'status': exc.status_code, 'error': exc.detail})
+        before, after = db.queue_trash(sorted(set().union(*targets.values())), connection=c)
+        queued_ids = {row['id'] for row in before}
+        for email_id in sorted(queued_ids):
+            db.add_audit_log(email_id, 'queue_trash', actor='user', reason='本地立即隐藏，后台同步服务器垃圾箱', connection=c)
+        undo_token = record('trash_pending', before, after, connection=c) if before else None
+
+    completed, reconciled = 0, 0
+    for record_id, ids in targets.items():
         if not ids:
-            if any(r['status'] == 'trash' or str(r['pending_action'] or '').startswith('trash') for r in matched):
-                return already_trashed
-            raise HTTPException(409, '这封邮件的服务器副本尚未同步，请刷新已发送文件夹后再删除')
-    return api_bulk_email_action(BulkMailRequest(ids=ids, action='trash'))
+            reconciled += 1
+        elif ids <= queued_ids:
+            completed += 1
+        else:
+            failed.append({'id': record_id, 'status': 409, 'error': '邮件已在处理或本地记录不可用'})
+    return {'ok': not failed, 'completed': completed + reconciled, 'queued': completed,
+            'reconciled': reconciled, 'failed': failed, 'undo_token': undo_token}
 
 
 @router.get("/api/mail/send-capability")

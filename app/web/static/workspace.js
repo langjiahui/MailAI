@@ -206,6 +206,23 @@ function showOperationFailures(items, retry) {
   taskNotice(mailaiTemplate`${items.length} 封未完成：${items.slice(0, 2).map(item => mailaiSystemMessage(item.error)).join('；')}`, mailaiText('仅重试失败项'), retry);
 }
 
+function removeTrashedSentRows(ids, accountId) {
+  if (!ids.length || activeMailAccount()?.id !== accountId) return false;
+  // Invalidate in-flight reads before removing rows already committed to Trash.
+  ++mailLoadRevision;
+  window.mailaiMailboxStore?.invalidate(accountId);
+  const removed = new Set(ids.map(Number));
+  sentMessages = sentMessages.filter(item => !removed.has(Number(item.id)));
+  if (specialMailbox === 'sent') {
+    if (Array.isArray(searchResults)) searchResults = searchResults.filter(item => !removed.has(Number(item.id)));
+    renderSpecialMailbox({silent:true});
+  } else if (removed.has(Number(selectedEmailId))) {
+    resetReadingPane();
+  }
+  updateSidebar();
+  return true;
+}
+
 async function refreshSentMailboxView(accountId, {token = '', nextStatus = '', sentRecordId = null} = {}) {
   try {
     window.mailaiMailboxStore?.invalidate(accountId);

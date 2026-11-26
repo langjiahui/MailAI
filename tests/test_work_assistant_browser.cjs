@@ -106,6 +106,7 @@ let log=''; fixture.stdout.on('data',chunk=>log+=chunk); fixture.stderr.on('data
     const openSettings=async()=>{
       if(!await page.locator('#system-view').isVisible())await page.locator('#btn-preferences').click();
       if(!await page.locator('#work-style-settings').isVisible())await page.locator('[data-system-tab="xiaoyou"]').click();
+      await page.locator('#work-style-settings').evaluate(node=>node.scrollIntoView({block:'center'}));
       await page.locator('#work-style-settings').click();await page.locator('#work-preferences-dialog').waitFor();
       await page.waitForFunction(()=>!document.querySelector('#work-preferences-dialog [name="style"]').disabled);
     };
@@ -234,12 +235,15 @@ let log=''; fixture.stdout.on('data',chunk=>log+=chunk); fixture.stderr.on('data
     await page.waitForFunction(()=>document.querySelector('#todo-center button[data-todo-view="followups"] small')?.innerText==='1');
     await page.evaluate(()=>closeTodoCenter());
     assert(!writes.some(url=>url.endsWith('/api/mail/send')||url.endsWith('/api/mail/outbox')),'Conversation and memory never send mail');
-    // Learn two historical edits and only count the third after the actual outbox delivers it.
+    // With an AI model configured, sent-mail learning is already active automatically.
     await openSettings();
     const writing=dialog.locator('.writing-memory-panel');
     await writing.locator(':scope > summary').click();
     const collection=writing.locator('[data-writing-action="collect"]');
-    assert.match(await collection.textContent(),/开启/);
+    await writing.getByRole('button',{name:'暂停学习'}).waitFor();
+    assert.equal(await writing.locator('[data-writing-days]').inputValue(),'90');
+    await collection.click();
+    await writing.getByRole('button',{name:'继续学习'}).waitFor();
     await collection.click();
     await writing.getByRole('button',{name:'暂停学习'}).waitFor();
     const writingAccount=await page.evaluate(()=>activeMailAccount()?.id);
@@ -315,7 +319,9 @@ let log=''; fixture.stdout.on('data',chunk=>log+=chunk); fixture.stderr.on('data
     await page.evaluate(async()=>{await openCompose();toggleComposeAiPanel(true);});
     await page.waitForFunction(()=>document.activeElement?.id==='compose-ai-instruction');
     await to.fill('writing-target@example.test');await to.blur();
+    assert.equal(await to.inputValue(),'writing-target@example.test');
     await page.locator('#compose-ai-instruction').fill('准备学习验证草稿');
+    await page.locator('#btn-ai-generate').evaluate(node=>node.scrollIntoView({block:'nearest'}));
     await page.locator('#btn-ai-generate').click();
     await page.locator('#compose-ai-writing-memory').getByText('先给结论',{exact:false}).waitFor();
     await page.evaluate(()=>hideCompose());
@@ -344,7 +350,7 @@ let log=''; fixture.stdout.on('data',chunk=>log+=chunk); fixture.stderr.on('data
         surfaces.set(`${theme}/${mode}`,bounds.surface);
         assert(bounds.top>=-1&&bounds.bottom<=bounds.vh+1&&bounds.width<=bounds.vw&&bounds.overflow<=2,JSON.stringify({theme,mode,language,width,scale,bounds}));layouts++;
       }
-      await page.evaluate(()=>{document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1');});
+      await page.evaluate(()=>{document.body.style.zoom='1';document.documentElement.style.setProperty('--fz','1');document.querySelectorAll('#system-view, #system-view *').forEach(n=>{if(n.scrollTop)n.scrollTop=0;});});
       if(mode==='light')await page.screenshot({path:`output/work-assistant/memory-${process.env.MAILAI_BROWSER||'chromium'}-${theme}-${language}.png`});
       await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'});
     }

@@ -96,6 +96,39 @@ def main():
     system_settings._save_registry(registry)
     config.DB_PATH = registry['accounts'][registry['last_account']]['db_path']
     config.RAW_DIR = registry['accounts'][registry['last_account']]['raw_dir']
+
+    @server.app.post('/fixture/sent-selection/{key}')
+    def seed_sent_selection(key: str):
+        from uuid import uuid4
+        from app import outbox
+
+        account = registry['accounts'][key]
+        marker = uuid4().hex
+        target = 'fixture-recipient@example.test'
+        with use(dict(ACCOUNT_ID=key, DB_PATH=account['db_path'], IMAP_USER=account['user'])):
+            def remote(subject, message_id):
+                with db.conn() as c:
+                    uid = c.execute("SELECT coalesce(max(uid),1000)+1 FROM emails WHERE folder='Sent'").fetchone()[0]
+                return db.upsert_email(dict(uid=uid, folder='Sent', status='sent', subject=subject,
+                    message_id=message_id, from_addr=account['user'], to_addr=target, date=datetime.now().isoformat(),
+                    body_text='Server sent preview body'))
+
+            def receipt(subject, has_copy):
+                code = f'<{marker}-{has_copy}@example.test>'
+                record = db.create_sent_message(dict(from_addr=account['user'], to_addr=target, subject=subject,
+                    body_html='<p>Local sent preview body</p>'))
+                db.finish_sent_message(record, ok=True, message_id=code)
+                if has_copy:
+                    remote(subject, code)
+                return record
+
+            local = receipt(f'Local sent {marker}', True)
+            server_only = remote(f'Server sent {marker}', f'<{marker}-server@example.test>')
+            missing_copy = receipt(f'Waiting for sync {marker}', False)
+            subject = f'Queued {marker}'
+            outbox.enqueue(marker, dict(to_addr=target, subject=subject), delay=3600)
+        return dict(local=local, server=-server_only, missing=missing_copy, queued=subject, token=marker)
+
     if os.environ.get('MAILAI_SEARCH_FIXTURE') == '1':
         from app import mail_assistant, productivity
         import re,time

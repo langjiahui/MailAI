@@ -19,7 +19,11 @@ from cryptography.hazmat.primitives import serialization
 
 REPO = 'example/mailai'
 HEAD, BASE, TREE, MERGED, TAG, OTHER = (letter * 40 for letter in 'abcdef')
-NOW = datetime.now(timezone.utc).isoformat()
+NOW_DT = datetime.now(timezone.utc)
+NOW = NOW_DT.isoformat()
+BASE_VER = f'{NOW_DT.year}.{NOW_DT.month}.0'
+TARGET_VER = f'{NOW_DT.year}.{NOW_DT.month}.1'
+ALT_PATCH_VER = f'{NOW_DT.year}.{NOW_DT.month}.2'
 
 
 def run(number, workflow='pr-check.yml', *, head=HEAD, branch='codex/release',
@@ -56,14 +60,14 @@ class FakeGitHub:
         self.pr = dict(state='open', draft=False, merged=False, merge_commit_sha=None,
                        head={'sha': HEAD, 'ref': 'codex/release', 'repo': {'full_name': REPO}},
                        base={'sha': BASE, 'ref': 'main', 'repo': {'full_name': REPO}})
-        self.files = {'VERSION': '3.7.0\n', 'README.md': '当前版本：**v3.7.0**',
-                      'docs/发布-v3.7.0-2026-10-26.md':
-                      '- 基准版本：v3.6.0。\n- 变更类型：MINOR。\n- 目标版本：v3.7.0。\n- 判断依据：新增兼容功能。\n'}
-        self.releases = [dict(tag_name='v3.6.0', draft=False, prerelease=False, published_at=NOW)]
-        self.manifest = dict(version='3.7.0', release_url=f'https://github.com/{REPO}/releases/tag/v3.7.0', assets={})
+        self.files = {'VERSION': f'{TARGET_VER}\n', 'README.md': f'当前版本：**v{TARGET_VER}**',
+                      f'docs/发布-v{TARGET_VER}-2026-10-26.md':
+                      f'- 基准版本：v{BASE_VER}。\n- 变更类型：MINOR。\n- 目标版本：v{TARGET_VER}。\n- 判断依据：新增兼容功能。\n'}
+        self.releases = [dict(tag_name=f'v{BASE_VER}', draft=False, prerelease=False, published_at=NOW)]
+        self.manifest = dict(version=TARGET_VER, release_url=f'https://github.com/{REPO}/releases/tag/v{TARGET_VER}', assets={})
         self.assets = []
         for number, (platform, name) in enumerate(release.RELEASE_ASSETS.items(), 1):
-            url = f'https://github.com/{REPO}/releases/download/v3.7.0/{name}'
+            url = f'https://github.com/{REPO}/releases/download/v{TARGET_VER}/{name}'
             self.manifest['assets'][platform] = dict(url=url, size=100, sha256='1' * 64)
             self.assets.append(dict(name=name, id=number, size=100, digest='sha256:' + '1' * 64,
                                     browser_download_url=url, state='uploaded'))
@@ -113,10 +117,10 @@ class FakeGitHub:
             return {'workflow_runs': [self.current_run]}
         if path.startswith('actions/workflows/release.yml/runs?'):
             return {'workflow_runs': ([self.preparation] if self.preparation else []) +
-                    [run(45, 'release.yml', head=MERGED, branch='v3.7.0', event='push')]}
+                    [run(45, 'release.yml', head=MERGED, branch=f'v{TARGET_VER}', event='push')]}
         if path.startswith('actions/workflows/atomgit-sync.yml/runs?'):
             mirror = run(46, 'atomgit-sync.yml', head=OTHER, branch='main', event='workflow_run')
-            mirror['display_title'] = 'Sync AtomGit v3.7.0'
+            mirror['display_title'] = f'Sync AtomGit v{TARGET_VER}'
             wrong = dict(mirror, id=47, display_title='Sync AtomGit v9.0.0')
             return {'workflow_runs': [wrong, mirror]}
         if path.startswith('actions/runs/') and '/artifacts?' in path:
@@ -125,7 +129,7 @@ class FakeGitHub:
         if path == 'actions/runs/42':
             return self.current_run
         if path.startswith('releases/tags/'):
-            return dict(tag_name='v3.7.0', draft=False, prerelease=False, assets=self.assets,
+            return dict(tag_name=f'v{TARGET_VER}', draft=False, prerelease=False, assets=self.assets,
                         html_url=self.manifest['release_url'])
         raise AssertionError(path)
 
@@ -178,16 +182,16 @@ class CoordinatorTest(unittest.TestCase):
                     emit=lambda stage, **data: self.events.append((stage, data)))
 
     def plan(self):
-        return self.runner.preflight(12, '3.7.0', 'minor', HEAD)
+        return self.runner.preflight(12, TARGET_VER, 'minor', HEAD)
 
     def execute(self, plan):
         with patch.object(update_trust, 'PUBLIC_KEY', self.api.public_key), \
-                patch.object(update_mirror, 'read_channel', side_effect=[{'version':'3.6.0'},self.api.manifest]):
+                patch.object(update_mirror, 'read_channel', side_effect=[{'version': BASE_VER}, self.api.manifest]):
             self.runner.execute(plan)
 
     def test_default_only_plans_and_requires_explicit_execution(self):
         with patch.object(release, 'GitHub', return_value=self.api):
-            self.assertEqual(release.main(['--pr', '12', '--version', '3.7.0', '--change-type', 'minor']), 0)
+            self.assertEqual(release.main(['--pr', '12', '--version', TARGET_VER, '--change-type', 'minor']), 0)
         self.assertEqual(self.api.writes, [])
 
     def test_complete_release_uses_verified_tree_and_checks_real_signatures(self):
@@ -196,7 +200,7 @@ class CoordinatorTest(unittest.TestCase):
                          [('PUT', 'pulls/12/merge'), ('POST', 'git/tags'), ('POST', 'git/refs')])
         self.assertEqual(self.api.writes[0][2]['sha'], HEAD)
         self.assertEqual(self.api.writes[1][2]['object'], MERGED)
-        self.assertEqual(self.api.writes[2][2]['ref'], 'refs/tags/v3.7.0')
+        self.assertEqual(self.api.writes[2][2]['ref'], f'refs/tags/v{TARGET_VER}')
         self.assertEqual(self.events[-1][0], 'complete')
 
     def test_private_build_starts_before_full_wait_and_neither_can_be_bypassed(self):
@@ -204,7 +208,7 @@ class CoordinatorTest(unittest.TestCase):
         original=self.runner.full
         def full(plan):
             self.assertEqual(self.api.writes[0],('POST','actions/workflows/release.yml/dispatches',
-                {'ref':'codex/release','inputs':{'candidate_head':HEAD,'candidate_version':'3.7.0'}}))
+                {'ref':'codex/release','inputs':{'candidate_head':HEAD,'candidate_version':TARGET_VER}}))
             return original(plan)
         with patch.object(self.runner,'full',side_effect=full):self.execute(self.plan())
         self.assertEqual(self.events[-1][0],'complete')
@@ -223,9 +227,9 @@ class CoordinatorTest(unittest.TestCase):
             if case == 'fork':self.api.pr['head']['repo']['full_name'] = 'fork/repo'
             if case == 'draft':self.api.pr['draft'] = True
             if case == 'head':self.api.pr['head']['sha'] = OTHER
-            if case == 'version':self.api.files['VERSION'] = '3.6.0'
+            if case == 'version':self.api.files['VERSION'] = BASE_VER
             if case == 'readme':self.api.files['README.md'] = ''
-            key='docs/发布-v3.7.0-2026-10-26.md'
+            key=f'docs/发布-v{TARGET_VER}-2026-10-26.md'
             if case == 'reason':self.api.files[key] = self.api.files[key].split('- 判断依据')[0]
             if case == 'classification':self.api.files[key] = self.api.files[key].replace('MINOR', 'PATCH')
             if case == 'record':del self.api.files[key]
@@ -297,7 +301,7 @@ class CoordinatorTest(unittest.TestCase):
         self.assertEqual(self.api.writes,[])
 
     def test_new_published_baseline_blocks_tag_creation(self):
-        plan=self.plan();self.api.releases.insert(0,dict(tag_name='v3.6.1',draft=False,
+        plan=self.plan();self.api.releases.insert(0,dict(tag_name=f'v{ALT_PATCH_VER}',draft=False,
                                    prerelease=False,published_at='2099-01-01T00:00:00Z'))
         with self.assertRaises(ValueError):self.runner.create_tag(plan,MERGED)
         self.assertEqual(self.api.writes,[])
@@ -313,7 +317,7 @@ class CoordinatorTest(unittest.TestCase):
 
     def test_domestic_channel_must_match_the_official_signed_manifest(self):
         with patch.object(update_trust,'PUBLIC_KEY',self.api.public_key), \
-                patch.object(update_mirror,'read_channel',return_value={'version':'3.6.0'}):
+                patch.object(update_mirror,'read_channel',return_value={'version':BASE_VER}):
             with self.assertRaises(ValueError):self.runner.execute(self.plan())
         self.assertNotEqual(self.events[-1][0],'complete')
 
@@ -322,16 +326,21 @@ class VersionAndTransportTest(unittest.TestCase):
     def test_actions_token_cannot_silently_create_a_tag_without_triggering_builds(self):
         with patch.dict(os.environ,{'GITHUB_ACTIONS':'true'}),patch.object(release,'GitHub') as api:
             with self.assertRaises(SystemExit) as stopped:
-                release.main(['--pr','12','--version','3.7.0','--change-type','minor','--execute'])
+                release.main(['--pr','12','--version',TARGET_VER,'--change-type','minor','--execute'])
         self.assertEqual(stopped.exception.code,2)
         api.assert_not_called()
 
-    def test_independent_desktop_version_classification_and_carry(self):
-        for base,change,target in [('3.6.0','patch','3.6.1'),('3.6.0','minor','3.7.0'),
-                                   ('3.6.0','major','4.0.0'),('3.9.4','minor','4.0.0'),
-                                   ('3.4.9','patch','4.0.0')]:
-            self.assertEqual(release.next_version(base,change),target)
-        for value in ['v3.6.0','3.6','03.6.0','3.6.0-beta.1','../3.6.0']:
+    def test_independent_desktop_calver_sequence_and_month_rollover(self):
+        for base,change,year,month,target in [
+            ('5.0.0','minor',2026,11,'2026.11.0'),
+            ('2026.11.0','patch',2026,11,'2026.11.1'),
+            ('2026.11.9','minor',2026,11,'2026.11.10'),
+            ('2026.11.10','patch',2026,12,'2026.12.0'),
+        ]:
+            self.assertEqual(release.next_version(base,change,year=year,month=month),target)
+        with self.assertRaises(ValueError):
+            release.next_version('2026.12.0','patch',year=2026,month=11)
+        for value in ['v2026.11.0','2026.11','2026.01.0','2026.11.0-beta.1','../2026.11.0']:
             with self.assertRaises(ValueError):release.version(value)
 
     def test_only_404_is_treated_as_an_absent_resource(self):

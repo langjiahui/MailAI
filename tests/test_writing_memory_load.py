@@ -115,7 +115,7 @@ def verify_adaptive_batches():
 
 def main(size):
     verify_adaptive_batches()
-    with TemporaryDirectory(prefix='mailai-writing-load-') as root:
+    with TemporaryDirectory(prefix='mailai-writing-load-') as root, patch('app.llm.client.available', return_value=False):
         account = dict(ACCOUNT_ID='large',DB_PATH=str(Path(root)/'mail.db'),DATA_DIR=root,IMAP_USER=OWNER)
         with use(account):
             db.init_db()
