@@ -317,6 +317,7 @@ const {chromium,webkit} = require('playwright');
     // rendered action must carry its source instead of using stale selection.
     const outgoingAccount=await page.evaluate(()=>activeMailAccount().id);
     for(const remote of [false,true]) {
+      await page.setViewportSize({width:375,height:812});
       await page.evaluate(async remote=>{
         window.pywebview.api.prepare_mail_output=async(id,account,language,source)=>{
           window.__sentOutputRef={id,account,source};return window.__outputData;
@@ -365,6 +366,21 @@ const {chromium,webkit} = require('playwright');
       assert.equal(reference.id,remote?99:42);
       assert.equal(reference.source,remote?'email':'sent');
       assert.equal(reference.account,outgoingAccount);
+      await dialog.locator('[data-output-close]').click();
+      assert(await more.evaluate(summary=>summary===document.activeElement));
+
+      await page.setViewportSize({width:1512,height:1000});
+      await share.waitFor({state:'visible'});
+      assert(!(await more.isVisible()));
+      const remove=toolbar.getByRole('button',{name:'删除邮件'});
+      assert(await remove.isVisible());
+      assert(!(await remove.locator('span').isVisible()));
+      assert.equal(await remove.getAttribute('title'),'删除邮件');
+      await share.click();
+      await page.waitForFunction(()=>!document.querySelector('#mail-output-format').disabled);
+      assert.deepEqual(await page.evaluate(()=>window.__sentOutputRef),reference);
+      await page.setViewportSize({width:375,height:812});
+      await more.waitFor({state:'visible'});
       await dialog.locator('[data-output-close]').click();
       assert(await more.evaluate(summary=>summary===document.activeElement));
     }

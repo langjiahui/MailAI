@@ -4013,10 +4013,10 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
   const moreActions = canOutput ? renderReadingMoreActions(`<div class="reading-secondary-actions">${renderMailOutputButtons({
     id:row._remote ? row.remote_email_id : row.id,
     source:row._remote ? 'email' : 'sent', accountId:activeMailAccount()?.id,
-  })}</div>${canEditSent ? `<div class="reading-secondary-actions"><button type="button" class="special-delete">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l1 15h10l1-15M10 10v7M14 10v7"/><path d="M4 6h16M9 6V3h6v3"/></svg>
+  })}</div>${canEditSent ? `<div class="reading-secondary-actions"><button type="button" class="special-delete" aria-label="删除邮件" title="删除邮件" data-i18n-aria="ui.2f9d72d5133f" data-i18n-title="ui.2f9d72d5133f">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l1 15h10l1-15M10 10v7M14 10v7"/><path class="hover-icon-part" d="M4 6h16M9 6V3h6v3"/></svg>
     <span data-i18n="ui.2f9d72d5133f">删除邮件</span></button></div>` : ''}`) : '';
-  const actionBar = `<div class="special-mail-actions">${specialActionButtons}${moreActions}</div>`;
+  const actionBar = `<div class="special-mail-actions">${specialActionButtons}${moreActions}${canOutput ? '<div class="special-mail-direct-actions"></div>' : ''}</div>`;
   const date = row.sent_at || row.updated_at || row.created_at;
   pane.innerHTML = `<div class="special-mail-detail" data-mailbox="${kind}">
     <header class="special-mail-header">
@@ -4147,8 +4147,10 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
     const accountId = activeMailAccount()?.id;
     button.onclick = async () => {
       if (button.disabled) return;
-      more.open = false;
-      more.querySelector('summary').focus({preventScroll:true});
+      if (more.contains(button)) {
+        more.open = false;
+        more.querySelector('summary').focus({preventScroll:true});
+      }
       button.disabled = true;
       try {
         const result = await api('/api/mail/sent/' + row.id, {accountId, method:'DELETE'});

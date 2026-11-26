@@ -5,9 +5,9 @@ MailAI 是一款**本地优先（Local-First）、AI 驱动**的开源跨平台�
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v4.9.3**
+当前版本：**v4.9.4**
 
-本次更新：为「已发送」详情页主操作栏的「再次编辑」「AI 催办」「安排跟进」按钮补齐与收件箱阅读区一致的悬停图标微动效，并在系统减少动态效果模式下自动关闭。[发布说明](docs/发布-v4.9.3-已发送操作按钮悬停微动效.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
+本次更新：优化「已发送」详情页操作栏响应式布局，宽度充足时直接平铺打印、分享与删除图标按钮，窄屏自动收纳进「更多」菜单，并适配窗口缩放后导出弹窗关闭焦点还原与按钮动效。[发布说明](docs/发布-v4.9.4-已发送操作栏宽屏自适应展开.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
 
 ---
 

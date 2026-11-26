@@ -119,9 +119,33 @@ html[data-theme] body .special-mail-detail .rich-email-frame { border:0!importan
 .special-mail-detail[data-mailbox="sent"] h1 { margin:8px 0 12px; }
 html[data-theme] body .special-mail-detail[data-mailbox="sent"] .special-mail-meta { gap:4px; }
 .special-mail-detail[data-mailbox="sent"] .special-mail-actions { gap:6px; margin:14px 0 0; }
-#reading-content .special-mail-detail[data-mailbox="sent"] .special-mail-actions :is(.action-btn,summary) {
+#reading-content .special-mail-detail[data-mailbox="sent"] .special-mail-actions :is(.action-btn,summary,.special-mail-direct-actions button) {
   box-sizing:border-box; min-height:34px; padding:0 10px; border-radius:10px;
 }
+.special-mail-direct-actions, .special-mail-direct-actions > .reading-secondary-actions { display:contents; }
+.special-mail-actions.measuring-actions { flex-wrap:nowrap; }
+.special-mail-actions.measuring-actions > button { flex:none; }
+.special-mail-actions.measuring-actions > .reading-more-actions { display:none; }
+#reading-content .special-mail-direct-actions button {
+  display:inline-flex; flex:none; align-items:center; justify-content:center; gap:7px;
+  border:1px solid transparent!important; background:transparent!important; box-shadow:none!important;
+  color:var(--desk-ink)!important; font:inherit; font-size:13px; font-weight:600; white-space:nowrap; cursor:pointer;
+  transition:background-color .16s ease,color .16s ease;
+}
+#reading-content .special-mail-direct-actions button:hover:not(:disabled) { background-color:var(--desk-hover)!important; }
+.special-mail-direct-actions svg {
+  width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:1.7;
+  stroke-linecap:round; stroke-linejoin:round;
+}
+#reading-content .special-mail-direct-actions .special-delete { color:var(--desk-muted)!important; }
+.special-mail-direct-actions .special-delete span { display:none; }
+#reading-content .special-mail-direct-actions .special-delete:not(:disabled):is(:hover,:focus-visible) {
+  color:#bf3b35!important; background-color:rgba(191,59,53,.09)!important;
+}
+html[data-theme="dark"] #reading-content .special-mail-direct-actions .special-delete:not(:disabled):is(:hover,:focus-visible) {
+  color:#ffaaa3!important; background-color:rgba(255,138,128,.13)!important;
+}
+#reading-content .special-mail-direct-actions .special-delete:disabled { opacity:.45; cursor:default; }
 #reading-content .special-mail-actions .reading-more-actions>summary {
   border-color:transparent!important; background:transparent!important;
   color:var(--desk-ink)!important; box-shadow:none!important;
@@ -134,5 +158,5 @@ html[data-theme] body .special-mail-detail[data-mailbox="sent"] .special-mail-at
 html[data-theme] body .special-mail-detail[data-mailbox="sent"] .special-mail-body { margin-top:18px; }
 
 @media(max-width:760px), (pointer:coarse) {
-  #reading-content .special-mail-detail[data-mailbox="sent"] .special-mail-actions :is(.action-btn,summary) { min-height:44px; }
+  #reading-content .special-mail-detail[data-mailbox="sent"] .special-mail-actions :is(.action-btn,summary,.special-mail-direct-actions button) { min-height:44px; }
 }

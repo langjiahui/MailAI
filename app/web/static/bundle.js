@@ -24405,10 +24405,10 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
   const moreActions = canOutput ? renderReadingMoreActions(`<div class="reading-secondary-actions">${renderMailOutputButtons({
     id:row._remote ? row.remote_email_id : row.id,
     source:row._remote ? 'email' : 'sent', accountId:activeMailAccount()?.id,
-  })}</div>${canEditSent ? `<div class="reading-secondary-actions"><button type="button" class="special-delete">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l1 15h10l1-15M10 10v7M14 10v7"/><path d="M4 6h16M9 6V3h6v3"/></svg>
+  })}</div>${canEditSent ? `<div class="reading-secondary-actions"><button type="button" class="special-delete" aria-label="删除邮件" title="删除邮件" data-i18n-aria="ui.2f9d72d5133f" data-i18n-title="ui.2f9d72d5133f">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l1 15h10l1-15M10 10v7M14 10v7"/><path class="hover-icon-part" d="M4 6h16M9 6V3h6v3"/></svg>
     <span data-i18n="ui.2f9d72d5133f">删除邮件</span></button></div>` : ''}`) : '';
-  const actionBar = `<div class="special-mail-actions">${specialActionButtons}${moreActions}</div>`;
+  const actionBar = `<div class="special-mail-actions">${specialActionButtons}${moreActions}${canOutput ? '<div class="special-mail-direct-actions"></div>' : ''}</div>`;
   const date = row.sent_at || row.updated_at || row.created_at;
   pane.innerHTML = `<div class="special-mail-detail" data-mailbox="${kind}">
     <header class="special-mail-header">
@@ -24539,8 +24539,10 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
     const accountId = activeMailAccount()?.id;
     button.onclick = async () => {
       if (button.disabled) return;
-      more.open = false;
-      more.querySelector('summary').focus({preventScroll:true});
+      if (more.contains(button)) {
+        more.open = false;
+        more.querySelector('summary').focus({preventScroll:true});
+      }
       button.disabled = true;
       try {
         const result = await api('/api/mail/sent/' + row.id, {accountId, method:'DELETE'});
@@ -31053,7 +31055,10 @@ document.addEventListener('keydown', event => {
     preview = null;
     find('#mail-output-text-preview').textContent = '';
     release(old);
-    if (old?.returnFocus?.isConnected) old.returnFocus.focus({preventScroll:true});
+    if (old?.trigger?.isConnected) {
+      const target = old.trigger.closest('details')?.querySelector('summary') || old.trigger;
+      target.focus({preventScroll:true});
+    }
   }
   function close() { dialog.close(); clearClosedRun(); }
   dialog.addEventListener('close', clearClosedRun);
@@ -31126,7 +31131,7 @@ document.addEventListener('keydown', event => {
     if (!id || id<=0 || !accountId) return;
     if (dialog.open) return;
     clearClosedRun();
-    const scope = {id,accountId,source,mode,busy:true,data:null,file:null,controller:new AbortController(),scrollCleanups:[],previewReady:false,returnFocus:reference.returnFocus};
+    const scope = {id,accountId,source,mode,busy:true,data:null,file:null,controller:new AbortController(),scrollCleanups:[],previewReady:false,trigger:reference.trigger};
     run=scope;format.querySelector('[value="pdf"]').checked=true;status.textContent=t('working');paint();dialog.showModal();
     installScrollbar(find('#mail-output-text-preview'), scope, find('#mail-output-text-host'));
     try {
@@ -31223,7 +31228,7 @@ document.addEventListener('keydown', event => {
     menu?.removeAttribute('open');
     open(trigger.dataset.mailOutput, {
       id:trigger.dataset.mailOutputId, source:trigger.dataset.mailOutputSource,
-      accountId:trigger.dataset.mailOutputAccount, returnFocus:menu?.querySelector('summary') || trigger,
+      accountId:trigger.dataset.mailOutputAccount, trigger,
     });
   });
   window.mailaiMailOutput={open};
@@ -35127,6 +35132,42 @@ function mailCardDate(value, now = new Date()) {
 
   // Move the actual buttons, keeping their handlers and accessible names.
   let observedHost, resize, readingLayoutFrame=0, moving=[];
+  let sentHost, sentActionsWidth=0;
+  const sentResize = new ResizeObserver(() => requestAnimationFrame(layoutSentActions));
+  function layoutSentActions() {
+    if (!sentHost?.isConnected) return;
+    const more = sentHost.querySelector('.reading-more-actions');
+    const summary = more.querySelector('summary');
+    const panel = more.querySelector('.reading-more-panel');
+    const direct = sentHost.querySelector('.special-mail-direct-actions');
+    const focused = document.activeElement;
+    const focusedInMenu = panel.contains(focused);
+    const focusedInline = direct.contains(focused);
+    if (!sentActionsWidth) {
+      sentHost.classList.add('measuring-actions');
+      direct.append(...panel.children);
+      const last = direct.querySelector('.reading-secondary-actions:last-child button:last-child');
+      sentActionsWidth = last.offsetLeft + last.offsetWidth + 1;
+      sentHost.classList.remove('measuring-actions');
+    }
+    const compact = sentHost.clientWidth < sentActionsWidth;
+    more.classList.toggle('hidden', !compact);
+    if (compact && direct.children.length) {
+      if (focusedInline) summary.focus({preventScroll:true});
+      panel.append(...direct.children);
+      if (focusedInMenu && more.open) focused.focus({preventScroll:true});
+    } else if (!compact) {
+      direct.append(...panel.children);
+      more.open = false;
+      if (focusedInMenu) focused.focus({preventScroll:true});
+      if (focused === summary) direct.querySelector('button').focus({preventScroll:true});
+    }
+    if (more.open) positionReadingMorePanel(more);
+  }
+  document.addEventListener('mailai:language-changed', () => {
+    sentActionsWidth = 0;
+    layoutSentActions();
+  });
   function scheduleReadingLayout() {
     if(readingLayoutFrame)return;
     // Moving toolbar buttons changes the observed toolbar's own height. Commit
@@ -35149,6 +35190,16 @@ function mailCardDate(value, now = new Date()) {
     if(more)positionReadingMorePanel(more);
   }
   const observer=new MutationObserver(()=>{
+    const nextSentHost = document.querySelector('.special-mail-actions:has(> .special-mail-direct-actions)');
+    if (nextSentHost !== sentHost) {
+      sentResize.disconnect();
+      sentHost = nextSentHost;
+      sentActionsWidth = 0;
+      if (sentHost) {
+        sentResize.observe(sentHost);
+        layoutSentActions();
+      }
+    }
     const host=document.querySelector('.reading-header .reading-actions');if(!host||host===observedHost||!host.querySelector('.reading-work-actions'))return;
     resize?.disconnect();cancelAnimationFrame(readingLayoutFrame);readingLayoutFrame=0;observedHost=host;moving=[];
     const remind = host.querySelector('.reading-organize-actions [data-reading-action="remind"]');

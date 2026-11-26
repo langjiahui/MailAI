@@ -77,6 +77,42 @@
 
   // Move the actual buttons, keeping their handlers and accessible names.
   let observedHost, resize, readingLayoutFrame=0, moving=[];
+  let sentHost, sentActionsWidth=0;
+  const sentResize = new ResizeObserver(() => requestAnimationFrame(layoutSentActions));
+  function layoutSentActions() {
+    if (!sentHost?.isConnected) return;
+    const more = sentHost.querySelector('.reading-more-actions');
+    const summary = more.querySelector('summary');
+    const panel = more.querySelector('.reading-more-panel');
+    const direct = sentHost.querySelector('.special-mail-direct-actions');
+    const focused = document.activeElement;
+    const focusedInMenu = panel.contains(focused);
+    const focusedInline = direct.contains(focused);
+    if (!sentActionsWidth) {
+      sentHost.classList.add('measuring-actions');
+      direct.append(...panel.children);
+      const last = direct.querySelector('.reading-secondary-actions:last-child button:last-child');
+      sentActionsWidth = last.offsetLeft + last.offsetWidth + 1;
+      sentHost.classList.remove('measuring-actions');
+    }
+    const compact = sentHost.clientWidth < sentActionsWidth;
+    more.classList.toggle('hidden', !compact);
+    if (compact && direct.children.length) {
+      if (focusedInline) summary.focus({preventScroll:true});
+      panel.append(...direct.children);
+      if (focusedInMenu && more.open) focused.focus({preventScroll:true});
+    } else if (!compact) {
+      direct.append(...panel.children);
+      more.open = false;
+      if (focusedInMenu) focused.focus({preventScroll:true});
+      if (focused === summary) direct.querySelector('button').focus({preventScroll:true});
+    }
+    if (more.open) positionReadingMorePanel(more);
+  }
+  document.addEventListener('mailai:language-changed', () => {
+    sentActionsWidth = 0;
+    layoutSentActions();
+  });
   function scheduleReadingLayout() {
     if(readingLayoutFrame)return;
     // Moving toolbar buttons changes the observed toolbar's own height. Commit
@@ -99,6 +135,16 @@
     if(more)positionReadingMorePanel(more);
   }
   const observer=new MutationObserver(()=>{
+    const nextSentHost = document.querySelector('.special-mail-actions:has(> .special-mail-direct-actions)');
+    if (nextSentHost !== sentHost) {
+      sentResize.disconnect();
+      sentHost = nextSentHost;
+      sentActionsWidth = 0;
+      if (sentHost) {
+        sentResize.observe(sentHost);
+        layoutSentActions();
+      }
+    }
     const host=document.querySelector('.reading-header .reading-actions');if(!host||host===observedHost||!host.querySelector('.reading-work-actions'))return;
     resize?.disconnect();cancelAnimationFrame(readingLayoutFrame);readingLayoutFrame=0;observedHost=host;moving=[];
     const remind = host.querySelector('.reading-organize-actions [data-reading-action="remind"]');
