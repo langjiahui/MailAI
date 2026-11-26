@@ -16,6 +16,7 @@
     #btn-filter-panel,
     .reading-start-actions > button,
     .reading-actions :is(.reading-reply-group,.reading-work-actions,.reading-ai-group) > button,
+    .special-mail-detail[data-mailbox="sent"] .special-mail-actions > :is(#btn-edit-special,#btn-sent-ai-followup,#btn-sent-schedule-followup),
     .reading-more-panel button,
     #assistant-panel :is(.assistant-head-actions > button,.assistant-quick > button,#assistant-send)
   ):hover:not(:disabled,[aria-disabled="true"],[aria-busy="true"]) :where(svg:not(:has(> .hover-icon-part)),svg > .hover-icon-part),
@@ -27,7 +28,7 @@
     transform-origin:center;
     animation:toolbarIconNudge var(--toolbar-icon-duration, 320ms) ease-in-out var(--toolbar-icon-delay, 0ms);
   }
-  .topbar .nav-pencil { --toolbar-icon-peak:translate(1.4px,-2.2px) rotate(-12deg); }
+  :is(.topbar .nav-pencil,#btn-edit-special) { --toolbar-icon-peak:translate(1.4px,-2.2px) rotate(-12deg); }
   .topbar .nav-contact-person { --toolbar-icon-peak:translateY(-1.6px) scale(1.13); }
   .topbar .nav-attachments > .nav-icon { --toolbar-icon-peak:rotate(-19deg); }
   .topbar .nav-security > .nav-icon { --toolbar-icon-peak:scale(1.17); }
@@ -61,7 +62,7 @@
   .reading-actions [data-reading-action="todo"] { --toolbar-icon-peak:translateY(-1px); }
   .reading-actions .reading-todo-check + .reading-todo-check { --toolbar-icon-delay:45ms; }
   .reading-actions [data-reading-action="summary"] { --toolbar-icon-peak:scaleX(.84); }
-  .reading-actions [data-reading-action="ask"] { --toolbar-icon-peak:translateY(-2px) scale(1.09); }
+  :is(.reading-actions [data-reading-action="ask"],#btn-sent-ai-followup) { --toolbar-icon-peak:translateY(-2px) scale(1.09); }
   .reading-summary-control { --toolbar-icon-peak:translateY(2.5px); }
   .reading-more-symbol path {
     --toolbar-icon-peak:translateY(-3.5px);
@@ -71,7 +72,7 @@
   .reading-more-symbol path:nth-child(3) { --toolbar-icon-delay:90ms; }
 
   .reading-more-panel .btn-correspondence { --toolbar-icon-peak:translateX(2.8px) rotate(-8deg); }
-  .reading-more-panel [data-reading-action="remind"] .hover-icon-part {
+  :is(.reading-more-panel [data-reading-action="remind"],#btn-sent-schedule-followup) .hover-icon-part {
     --toolbar-icon-peak:rotate(38deg);
     transform-box:view-box;
   }

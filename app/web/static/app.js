@@ -4128,7 +4128,7 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
     };
     const scheduleBtn = document.createElement('button');
     scheduleBtn.type = 'button'; scheduleBtn.className = 'action-btn compact'; scheduleBtn.id = 'btn-sent-schedule-followup';
-    scheduleBtn.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M10 6v4l2.5 1.5"/></svg><span></span>`;
+    scheduleBtn.innerHTML = `<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path class="hover-icon-part" d="M10 6v4l2.5 1.5"/></svg><span></span>`;
     mailaiBindUI(scheduleBtn.querySelector('span'), 'textContent', () => mailaiText('安排跟进'));
     scheduleBtn.onclick = async () => {
       if (scheduleBtn.disabled) return;

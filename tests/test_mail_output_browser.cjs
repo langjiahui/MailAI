@@ -336,6 +336,19 @@ const {chromium,webkit} = require('playwright');
       assert.equal(await recipientLabel.innerText(),'发送至');
       assert.equal(await toolbar.locator('#btn-sent-schedule-followup').count(),remote?0:1);
       assert(await toolbar.locator('#btn-edit-special').isVisible());
+      if (!remote) {
+        await page.emulateMedia({reducedMotion:'no-preference'});
+        for (const id of ['btn-edit-special','btn-sent-ai-followup','btn-sent-schedule-followup']) {
+          const action=toolbar.locator('#'+id);
+          await action.hover();
+          assert.equal(await action.evaluate(button => getComputedStyle(
+            button.querySelector('.hover-icon-part') || button.querySelector('svg')
+          ).animationName),'toolbarIconNudge',id);
+        }
+        await page.emulateMedia({reducedMotion:'reduce'});
+        assert.equal(await toolbar.locator('#btn-sent-schedule-followup .hover-icon-part')
+          .evaluate(icon=>getComputedStyle(icon).animationName),'none');
+      }
       assert(!(await share.isVisible()));
       assert(!(await toolbar.locator('.special-delete').isVisible()));
       await more.focus();
