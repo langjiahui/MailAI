@@ -14,7 +14,7 @@ KEYS = {
     "mailai-language", "mailai-density", "mailai-mail-list-view", "mailai-mail-list-avatars", "mailai-mail-table-columns", "mailai.workspace.tablePaneSizes.v1", "mailai-font-scale",
     "mailai-companion-motion", "mailai-companion-sound", "mailai-companion-chatter",
     "mailai-assistant-floating",
-    "mailai-assistant-layout-v1", "mailai.workspace.paneSizes.v1",
+    "mailai-assistant-layout-v1", "mailai.workspace.paneSizes.v1", "mailai.workspace.sidebarCompact.v1",
     "mailai.assistant.dockWidth.v1",
     "mailai-companion-position-v1",
     "mailai-browsing-account", "mailai.sidebar.accountOrder.v1", "mailai.onboarding.v2",

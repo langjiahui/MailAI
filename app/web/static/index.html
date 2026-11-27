@@ -78,6 +78,7 @@
   <link rel="stylesheet" href="/static/home-dialog-polish.css?v=28359c254fe3">
   <link rel="stylesheet" href="/static/command-palette.css?v=45ec4fd720de">
   <link rel="stylesheet" href="/static/assistant-divider.css?v=c4c909118f79">
+  <link rel="stylesheet" href="/static/mailbox-rail.css?v=3">
   <link rel="stylesheet" href="/static/mail-filter-panel.css?v=3ccdf7a34022">
   <link rel="stylesheet" href="/static/mail-list-view.css?v=c59a1497b065">
   <link rel="stylesheet" href="/static/todo-center.css?v=6f852dcf30ad">
@@ -684,8 +685,15 @@
 
     <div class="layout">
       <button id="sidebar-backdrop" class="sidebar-backdrop" type="button" aria-label="关闭邮箱文件夹" data-i18n-aria="ui.dc42a40359b8"></button>
+      <nav id="mailbox-rail" aria-label="邮箱快捷导航" data-i18n-aria="rail.navigation">
+        <button type="button" data-rail-folder="inbox" aria-label="收件箱" data-i18n-aria="side.inbox" data-tooltip="收件箱" data-i18n-tooltip="side.inbox"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13.5 6.5 5h11l2.5 8.5V19H4zm0 0h5l1.5 2h3l1.5-2h5"/></svg><i hidden aria-hidden="true"></i></button>
+        <button type="button" data-rail-folder="sent" aria-label="已发送" data-i18n-aria="side.sent" data-tooltip="已发送" data-i18n-tooltip="side.sent"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3.5 10.5 17-7-5.8 17L11 13.2zm7.5 2.7 9.5-9.7"/></svg></button>
+        <button type="button" data-rail-folder="favorites" aria-label="我的收藏" data-i18n-aria="side.favorites" data-tooltip="我的收藏" data-i18n-tooltip="side.favorites"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3.5 2.6 5.3 5.9.9-4.2 4.1 1 5.8-5.3-2.7-5.3 2.7 1-5.8-4.2-4.1 5.9-.9z"/></svg></button>
+        <button id="mailbox-rail-folders" type="button" aria-expanded="false" aria-controls="mailbox-sidebar" aria-label="邮箱与文件夹" data-i18n-aria="rail.folders" data-tooltip="邮箱与文件夹" data-i18n-tooltip="rail.folders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 8h6l2 2h9v9h-17zM6.5 5h7l2 2h5"/></svg></button>
+        <button id="mailbox-rail-assistant" type="button" aria-expanded="false" aria-controls="assistant-panel" aria-label="小邮" data-i18n-aria="rail.assistant" data-tooltip="小邮" data-i18n-tooltip="rail.assistant"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3.5v11M3.5 9h11M17 12.5v8M13 16.5h8M18.5 3.5v5M16 6h5"/></svg></button>
+      </nav>
       <!-- 左侧边栏：文件夹、分类、筛选 -->
-      <aside class="sidebar">
+      <aside class="sidebar" id="mailbox-sidebar">
         <section class="nav-group mobile-workbench">
           <div class="nav-title" data-i18n="side.workbench">工作台</div>
           <nav>
@@ -786,7 +794,7 @@
         </section>
       </aside>
 
-      <div class="pane-resizer" data-resizer="sidebar" role="separator" aria-orientation="vertical" aria-label="调整文件夹栏宽度" data-i18n-aria="resize.sidebar" tabindex="0"><i></i></div>
+      <div class="pane-resizer" data-resizer="sidebar" role="separator" aria-orientation="vertical" aria-label="调整文件夹栏宽度" data-i18n-aria="resize.sidebar" aria-controls="mailbox-sidebar mailbox-rail" aria-describedby="mailbox-sidebar-resize-help" tabindex="0"><i></i><span id="mailbox-sidebar-resize-help" data-i18n="rail.resizeHelp">向左拖动收为图标，向右拖动展开。也可用左右方向键。</span></div>
 
       <!-- 中间邮件列表 -->
       <div class="list-pane">
@@ -1551,7 +1559,7 @@
       </form>
     </dialog>
   </div>
-  <script src="/static/bundle.js?v=489e1e1b628c"></script>
+  <script src="/static/bundle.js?v=bbc5a00f3321"></script>
   <script src="/static/settings-scroll.js?v=5"></script>
   <script type="module" src="/static/author-logo.js?v=5"></script>
 </body>

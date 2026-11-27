@@ -236,7 +236,7 @@ def api_sent_messages(limit: int = 500):
 @router.get("/api/mail/sent/{record_id}")
 def api_sent_message(record_id: int):
     row = db.get_sent_message(record_id)
-    if not row:
+    if not row or row.get('local_deleted_at'):
         raise HTTPException(404, "发送记录不存在")
     row.update(smtp_client.recipient_fields_for_display(row))
     annotate_list_identities([row])
@@ -252,7 +252,7 @@ def api_sent_preview(record_id: int):
                             (-record_id,)).fetchone()
         else:
             row = c.execute('''SELECT '' body_text,substr(body_html,1,16000) body_html,'' snippet FROM sent_messages
-                WHERE id=? AND status IN ('sent','accepted')''', (record_id,)).fetchone()
+                WHERE id=? AND local_deleted_at IS NULL AND status IN ('sent','accepted','failed')''', (record_id,)).fetchone()
     if not row:
         raise HTTPException(404, '已发送邮件不存在')
     text = (row['body_text'] or '').strip() or mail_parser.strip_html(row['body_html']) or row['snippet'] or ''
@@ -282,9 +282,13 @@ def _sent_trash_targets(c, record_id):
             raise HTTPException(404, '已发送邮件不存在')
         matched = [row]
     else:
-        receipt = c.execute('SELECT message_id,status FROM sent_messages WHERE id=?', (record_id,)).fetchone()
+        receipt = c.execute('SELECT message_id,status,local_deleted_at FROM sent_messages WHERE id=?', (record_id,)).fetchone()
         if not receipt:
             raise HTTPException(404, '发送记录不存在')
+        if receipt['local_deleted_at']:
+            return set()
+        if receipt['status'] == 'failed':
+            return None
         if receipt['status'] not in ('sent', 'accepted'):
             raise HTTPException(409, '请先在发件箱中核对发送结果')
         message_id = str(receipt['message_id'] or '').strip().casefold()
@@ -294,26 +298,38 @@ def _sent_trash_targets(c, record_id):
     trashed = {row['id'] for row in matched if row['status'] == 'trash' or (row['pending_action'] or '').startswith('trash')}
     targets = {row['id'] for row in matched if row['status'] == 'sent' and not row['remote_missing'] and row['id'] not in trashed}
     if not targets and not trashed:
+        if record_id > 0:
+            return None
         raise HTTPException(409, '这封邮件的服务器副本尚未同步，请刷新已发送文件夹后再删除')
     return targets
 
 
 def _trash_sent_records(record_ids):
+    from datetime import datetime
     from ...mail_undo import record
 
-    targets, failed = {}, []
+    targets, failed, local_before, local_after = {}, [], [], []
+    deleted_at = datetime.now().isoformat()
     with db.conn() as c:
         c.execute('BEGIN IMMEDIATE')
         for record_id in record_ids:
             try:
-                targets[record_id] = _sent_trash_targets(c, record_id)
+                ids = _sent_trash_targets(c, record_id)
             except HTTPException as exc:
                 failed.append({'id': record_id, 'status': exc.status_code, 'error': exc.detail})
+                continue
+            if ids is None:
+                c.execute('UPDATE sent_messages SET local_deleted_at=? WHERE id=?', (deleted_at, record_id))
+                local_before.append({'id': record_id})
+                local_after.append({'id': record_id, 'local_deleted_at': deleted_at})
+            else:
+                targets[record_id] = ids
         before, after = db.queue_trash(sorted(set().union(*targets.values())), connection=c)
         queued_ids = {row['id'] for row in before}
         for email_id in sorted(queued_ids):
             db.add_audit_log(email_id, 'queue_trash', actor='user', reason='本地立即隐藏，后台同步服务器垃圾箱', connection=c)
-        undo_token = record('trash_pending', before, after, connection=c) if before else None
+        undo_token = record('trash_pending', before + local_before, after + local_after,
+                            connection=c) if before or local_before else None
 
     completed, reconciled = 0, 0
     for record_id, ids in targets.items():
@@ -323,8 +339,9 @@ def _trash_sent_records(record_ids):
             completed += 1
         else:
             failed.append({'id': record_id, 'status': 409, 'error': '邮件已在处理或本地记录不可用'})
-    return {'ok': not failed, 'completed': completed + reconciled, 'queued': completed,
-            'reconciled': reconciled, 'failed': failed, 'undo_token': undo_token}
+    local_removed = len(local_after)
+    return {'ok': not failed, 'completed': completed + reconciled + local_removed, 'queued': completed,
+            'reconciled': reconciled, 'local_removed': local_removed, 'failed': failed, 'undo_token': undo_token}
 
 
 @router.get("/api/mail/send-capability")

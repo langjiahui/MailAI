@@ -312,7 +312,7 @@ def search(criteria, *, offset=0, limit=50, mailbox_rows=False):
                 "COALESCE(NULLIF(sent_at,''),created_at)",
                 "body_html",
                 "attachments_json",
-                "status='sent'",
+                "status='sent' AND local_deleted_at IS NULL",
             ),
             ("drafts", "draft", "updated_at", "body_html", "attachments_json", "1=1"),
         ]

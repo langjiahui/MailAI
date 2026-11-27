@@ -22,7 +22,7 @@ ADDITIVE_MIGRATION_DEFAULTS = {
     'emails': {'list_unsubscribe': '', 'is_automated': 0},
     'sync_jobs': {'folder': '', 'folder_limit': 0},
     'drafts': {'writing_sample': ''},
-    'sent_messages': {'writing_sample': '', 'writing_scene': ''},
+    'sent_messages': {'writing_sample': '', 'writing_scene': '', 'local_deleted_at': None},
 }
 
 

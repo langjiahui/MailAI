@@ -802,8 +802,10 @@ def _store_folder_message(folder: str, role: str, uid: int, raw: bytes, flags: l
                 "UPDATE emails SET remote_missing=0 WHERE id=? AND COALESCE(pending_action,'')=''",
                 (existing["id"],),
             )
-        if existing.get("status") != role:
-            db.set_status(existing["id"], role, folder)
+            if existing.get("status") != role:
+                connection.execute("UPDATE emails SET status=?,folder=? WHERE id=?", (role, folder, existing["id"]))
+            if role == 'sent':
+                db.queue_discovered_sent_copy(connection, existing["id"])
         return existing["id"]
     parsed = parser.parse_message(uid, raw, folder=folder)
     record = {
@@ -1036,6 +1038,8 @@ def _sync_one_folder(mail: MailClient, mailbox: dict, limit: int = 0,
                         "UPDATE emails SET remote_missing=0 WHERE id=? AND COALESCE(pending_action,'')=''",
                         (existing["id"],),
                     )
+                    if role == 'sent':
+                        db.queue_discovered_sent_copy(connection, existing["id"])
         else:
             _store_folder_message(folder, role, uid, raw, flags)
         seen_uids.append(uid)

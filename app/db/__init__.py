@@ -58,6 +58,8 @@ from .emails import (
 )
 from .trash import (
     queue_trash,
+    queue_discovered_sent_copy,
+    restore_local_sent_trash,
     due_trash_actions,
     discard_exhausted_trash_actions,
     advance_trash_action,

@@ -125,12 +125,14 @@ function describeMailUndo(path, body, result, accountId) {
   try { payload = JSON.parse(body || '{}'); } catch (_) {}
   const query = new URLSearchParams(path.split('?')[1] || '');
   const cleanPath = path.split('?')[0];
-  const action = payload.action || (/^\/api\/mail\/sent\//.test(cleanPath) ? 'trash' : cleanPath.split('/').at(-1));
+  const action = payload.action || (/^\/api\/mail\/sent\//.test(cleanPath)
+    ? (result.local_removed ? 'sent-trash' : 'trash') : cleanPath.split('/').at(-1));
   const value = payload.value !== false && query.get('value') !== 'false';
   const moveTarget = payload.target || result.folder || query.get('target');
   const moveLabel = result.local_only ? (moveTarget === '__local_archive__' ? mailaiText('本地归档') : mailaiText('收件箱（仅本机）')) : moveTarget;
   const label = {read:value ? mailaiText('标为已读') : mailaiText('标为未读'), star:value ? mailaiText('添加星标') : mailaiText('取消星标'),
-    get trash() { return mailaiText('移入已删除'); }, move:mailaiTemplate`移动到“${moveLabel || mailaiText('目标文件夹')}”`}[action] || mailaiText('邮件操作');
+    get trash() { return mailaiText('移入已删除'); }, get 'sent-trash'() { return mailaiText('删除邮件'); },
+    move:mailaiTemplate`移动到“${moveLabel || mailaiText('目标文件夹')}”`}[action] || mailaiText('邮件操作');
   const account = typeof _systemConfig !== 'undefined' ? _systemConfig?.accounts?.find(item => item.id === accountId) : null;
   return {label, count:Math.max(0, (result.completed ?? 1) - (result.reconciled || 0)), accountLabel:account?.user || accountId || mailaiText('当前邮箱')};
 }
@@ -208,7 +210,7 @@ function showOperationFailures(items, retry) {
 
 function removeTrashedSentRows(ids, accountId) {
   if (!ids.length || activeMailAccount()?.id !== accountId) return false;
-  // Invalidate in-flight reads before removing rows already committed to Trash.
+  // Invalidate in-flight reads before removing rows already deleted locally.
   ++mailLoadRevision;
   window.mailaiMailboxStore?.invalidate(accountId);
   const removed = new Set(ids.map(Number));
@@ -909,17 +911,22 @@ function updateAssistantPlacement() {
   panel.style.setProperty('--assistant-viewport-width', `${viewportRight / scale}px`);
   panel.style.setProperty('--assistant-viewport-height', `${viewportBottom / scale}px`);
   const width = (viewportRight - viewportLeft) / scale;
-  const home = visible && !floating && workspaceVisible && !reading && width > 1024;
-  const docked = visible && !floating && workspaceVisible && reading && width >= 1600;
-  const split = visible && !floating && workspaceVisible && reading && width >= 1024 && width < 1600;
-  const compact = visible && !floating && workspaceVisible && reading && width < 1024;
+  const automatic = visible && !floating && workspaceVisible;
+  const rail = innerWidth > 1024 && layout.classList?.contains('sidebar-compact');
+  const railOverlay = automatic && rail && width < 1200;
+  const home = automatic && !rail && !reading && width > 1024;
+  const docked = automatic && (rail ? width >= 1200 : reading && width >= 1600);
+  const split = automatic && !rail && reading && width >= 1024 && width < 1600;
+  const compact = automatic && !rail && reading && width < 1024;
   const wasSplit = document.body.classList.contains('assistant-split');
   const list = document.getElementById('email-list');
   if (split && !wasSplit && list) assistantListScroll = {top:list.scrollTop, account:activeMailAccount()?.id};
-  const modeChanged = wasSplit !== split || document.body.classList.contains('assistant-docked') !== docked || document.body.classList.contains('assistant-compact') !== compact;
+  const modeChanged = wasSplit !== split || document.body.classList.contains('assistant-docked') !== docked ||
+    document.body.classList.contains('assistant-compact') !== compact || document.body.classList.contains('assistant-rail-overlay') !== railOverlay;
   const readingTop = pane.scrollTop;
   const readingNode = document.getElementById('reading-content').firstElementChild;
-  for (const [name, enabled] of [['assistant-home',home],['assistant-docked',docked],['assistant-split',split],['assistant-split-narrow',split && width < 1200],['assistant-compact',compact]]) {
+  for (const [name, enabled] of [['assistant-home',home],['assistant-docked',docked],['assistant-split',split],
+    ['assistant-split-narrow',split && innerWidth <= 1024],['assistant-compact',compact],['assistant-rail-overlay',railOverlay]]) {
     if (document.body.classList.contains(name) !== enabled) document.body.classList.toggle(name, enabled);
   }
   if (modeChanged && readingNode) requestAnimationFrame(() => { if (document.getElementById('reading-content').firstElementChild === readingNode) pane.scrollTop = readingTop; });
@@ -927,7 +934,7 @@ function updateAssistantPlacement() {
     const saved = assistantListScroll; assistantListScroll = null;
     requestAnimationFrame(() => { if (!document.body.classList.contains('assistant-split') && saved.account === activeMailAccount()?.id) list.scrollTop = saved.top; });
   }
-  if (docked || split) document.getElementById('assistant-panel').style.setProperty('--assistant-dock-top', `${layout.getBoundingClientRect().top / scale}px`);
+  if (docked || split || railOverlay) panel.style.setProperty('--assistant-dock-top', `${layout.getBoundingClientRect().top / scale}px`);
   if (home) {
     const rect = pane.getBoundingClientRect();
     const left = Math.max(viewportLeft, Math.min(rect.left, viewportRight));
