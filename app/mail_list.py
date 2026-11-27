@@ -75,7 +75,7 @@ def validate(value):
 
 def condition(q, *, omit=(), user=None):
     status = 'inbox' if q['unified'] else q['status']
-    clauses = ["(pending_action IN ('trash','trash_copying','trash_copied','trash_locating','trash_local') OR (remote_missing=0 AND status='trash'))" if status=='trash' else 'remote_missing=0']
+    clauses = [db.mailbox_visibility(status, q['folder'])]
     args=[]
     if status=='favorites':clauses.append('is_favorite=1')
     elif status and status!='trash':clauses.append('status=?');args.append(status)
@@ -223,7 +223,8 @@ def page(filters, *, cursor='', limit=200, refresh=False, around_id=0):
             for row in c.execute("SELECT lower(substr(from_addr,instr(from_addr,'@')+1)) FROM main.emails WHERE remote_missing=0 AND instr(from_addr,'@')>0 GROUP BY 1"):
                 domains.add(row[0])
             for row in c.execute('SELECT status,is_local_archive,count(*) FROM main.emails WHERE remote_missing=0 GROUP BY status,is_local_archive'):
-                counts['totals'][row[0]]=counts['totals'].get(row[0],0)+row[2];counts['all']+=row[2]
+                counts['totals'][row[0]]=counts['totals'].get(row[0],0)+row[2]
+                if row[0]!='trash':counts['all']+=row[2]
                 if row[1]:counts['local'][row[0]]=counts['local'].get(row[0],0)+row[2]
             receipts=c.execute("""SELECT COUNT(*) FROM sent_messages s
                 WHERE trim(COALESCE(s.message_id,''))='' OR lower(trim(s.message_id)) NOT IN (

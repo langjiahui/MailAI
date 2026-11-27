@@ -5,9 +5,9 @@ MailAI 是一款**本地优先（Local-First）、AI 驱动**的开源跨平台�
 [![最新版本](https://img.shields.io/github/v/release/langjiahui/MailAI?label=最新版本)](https://github.com/langjiahui/MailAI/releases/latest)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
-当前版本：**v2026.11.0**
+当前版本：**v2026.11.1**
 
-本次更新：为「已发送」列表新增多选批量移入已删除、右栏堆叠卡片预览、批量撤销与列表模块拆分；同时调整小邮「从已发送邮件学习」为连接可用 AI 模型后自动在后台启动，并正式切换 Web／桌面端为日历版本号 CalVer（`YYYY.M.N`）。[发布说明](docs/发布-v2026.11.0-已发送批量删除与写作记忆自动学习.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
+本次更新：从「全部邮件」、常规邮件列表、侧栏计数与默认检索中统一排除垃圾箱邮件（仅垃圾箱视图、明确 `in:trash` 条件与指定服务器文件夹保留展示），并优化批量工具栏的已读/未读图标、中英文气泡提示、悬浮对比度与窄窗隐藏预览区体验。[发布说明](docs/发布-v2026.11.1-回收站计数隔离与批量工具栏优化.md) · [完整版本历史](https://github.com/langjiahui/MailAI/releases)
 
 ---
 
