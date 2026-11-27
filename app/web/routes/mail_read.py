@@ -133,7 +133,7 @@ def api_mailbox_counts():
             totals[key] = totals.get(key, 0) + row['n']
             if row['is_local_archive']:
                 local[key] = local.get(key, 0) + row['n']
-        all_count = sum(totals.values())
+        all_count = sum(totals.values()) - totals.get('trash', 0)
         receipts = c.execute("""SELECT COUNT(*) FROM sent_messages s
             WHERE trim(COALESCE(s.message_id,''))='' OR lower(trim(s.message_id)) NOT IN (
                 SELECT lower(trim(message_id)) FROM emails WHERE trim(COALESCE(message_id,''))<>''

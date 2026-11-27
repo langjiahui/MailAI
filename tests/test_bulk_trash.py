@@ -7,10 +7,11 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app import config, db, trash_queue
+from app import config, db, mail_identities, mail_list, trash_queue
 from app.imap_client import mailbox_role
 from app.mail_undo import restore
 from app.web import server
+from app.web.routes import mail_read
 
 
 def add_email(uid=41, subject="待删除"):
@@ -27,6 +28,18 @@ def make_due(email_id):
         )
 
 
+def check_trash_visibility(email_id, *, active):
+    with patch.object(mail_identities, 'schedule'):
+        all_mail = mail_list.page({})
+        trash = mail_list.page({'status': 'trash'})
+    assert (email_id in {row['id'] for row in all_mail['items']}) == active
+    assert (email_id in {row['id'] for row in trash['items']}) != active
+    assert all_mail['total'] == all_mail['counts']['all'] == mail_read.api_mailbox_counts()['all']
+    assert (email_id in {row['id'] for row in server.api_emails(days=9999)}) == active
+    assert (email_id in {row['id'] for row in server.api_search_emails(q='待删除')}) == active
+    assert (email_id in {row['id'] for row in server.api_search_emails(q='待删除', status='trash')}) != active
+
+
 def main():
     old_db = config.DB_PATH
     with tempfile.TemporaryDirectory() as root:
@@ -34,6 +47,7 @@ def main():
             config.DB_PATH = os.path.join(root, "mailai.db")
             db.init_db()
             email_id = add_email()
+            check_trash_visibility(email_id, active=True)
 
             with patch.object(server, "MailClient", side_effect=AssertionError("request must not use IMAP")):
                 result = server.api_bulk_email_action(
@@ -50,8 +64,10 @@ def main():
             assert any(e['id'] == email_id and e['status'] == 'trash' and e['pending_action'] == 'trash' for e in visible)
             assert not db.list_emails(status='inbox', days=9999)
             assert db.get_email(email_id)['status'] == 'inbox'
+            check_trash_visibility(email_id, active=False)
             undone = restore(result["undo_token"])
             assert undone["ok"] and db.get_email(email_id)["remote_missing"] == 0
+            check_trash_visibility(email_id, active=True)
 
             server.api_bulk_email_action(server.BulkMailRequest(ids=[email_id], action="trash"))
             make_due(email_id)
@@ -126,6 +142,9 @@ def main():
                 assert trash_queue.process_due()['processed'] == 1
             assert db.get_email(email_id)['uid'] == 141
             assert db.get_email(email_id)['remote_missing'] == 0
+            check_trash_visibility(email_id, active=False)
+            assert email_id in {row['id'] for row in server.api_search_emails(q='in:trash 待删除')}
+            assert email_id in {row['id'] for row in server.api_emails(days=9999, folder='Deleted Messages')}
         finally:
             config.DB_PATH = old_db
     print("Optimistic trash queue, undo and QQ no-COPYUID flow passed")

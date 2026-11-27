@@ -23637,9 +23637,10 @@ function serverFolderForRole(role) {
 
 function serverMailboxCounts() {
   if (!mailboxFolders.length) return null;
+  const trashFolder = serverFolderForRole('trash');
   const count = role => Number(serverFolderForRole(role)?.messages || 0);
   return {
-    all: mailboxFolders.filter(folder => folder.selectable !== false)
+    all: mailboxFolders.filter(folder => folder.selectable !== false && folder !== trashFolder)
       .reduce((sum, folder) => sum + Number(folder.messages || 0), 0),
     inbox: count('inbox'), sent: count('sent'), drafts: count('drafts'),
     quarantine: count('quarantine'), spam: count('spam'), trash: count('trash'),
@@ -23669,7 +23670,9 @@ function updateSidebar() {
   if (serverCounts) {
     for (const key of ['all', 'inbox', 'sent', 'drafts', 'quarantine', 'spam', 'trash']) {
       const local = mailboxLocalCounts?.local || {};
-      const extra = key === 'all' ? Object.values(local).reduce((sum, n) => sum + n, 0) : Number(local[key] || 0);
+      const extra = key === 'all'
+        ? Object.entries(local).reduce((sum, [status, n]) => status === 'trash' ? sum : sum + n, 0)
+        : Number(local[key] || 0);
       counts[key] = Math.max(counts[key] || 0, (serverCounts[key] || 0) + extra);
     }
     // Junk is a real server mailbox. Its badge must describe that mailbox,
@@ -24935,7 +24938,7 @@ function updateBulkToolbar() {
   for (const control of [toolbar.querySelector('[data-bulk-action="star"]'), document.getElementById('bulk-folder')]) {
     if (!control) continue;
     control.disabled = bulkOperationActive || (localSelection && (control.id !== 'bulk-folder' || !localMailSelection().all));
-    mailaiBindUI(control, "title", () => (localSelection ? (control.id === 'bulk-folder' && localMailSelection().all ? mailaiText('仅在 MailAI 本地整理，不上传服务器') : mailaiText('请分别选择本地邮件和服务器邮件；本地邮件可使用收藏')) : control.id === 'bulk-folder' ? mailaiText('移动所选邮件') : mailaiText('添加星标')));
+    mailaiBindUI(control, "title", () => (localSelection ? (control.id === 'bulk-folder' && localMailSelection().all ? mailaiText('仅在 MailAI 本地整理，不上传服务器') : mailaiText('请分别选择本地邮件和服务器邮件；本地邮件可使用收藏')) : control.id === 'bulk-folder' ? mailaiText('移动所选邮件') : ''));
   }
   const trashView = currentFilter.status === 'trash' && !unifiedMailbox && !specialMailbox;
   toolbar.querySelector('[data-bulk-action="purge"]')?.classList.toggle('hidden', !trashView);

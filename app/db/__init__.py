@@ -32,6 +32,7 @@ from .emails import (
     count_history_imported,
     folder_uids,
     EMAIL_LIST_COLUMNS,
+    mailbox_visibility,
     list_emails,
     iter_emails,
     notification_candidates,
