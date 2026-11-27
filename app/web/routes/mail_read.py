@@ -135,9 +135,9 @@ def api_mailbox_counts():
                 local[key] = local.get(key, 0) + row['n']
         all_count = sum(totals.values()) - totals.get('trash', 0)
         receipts = c.execute("""SELECT COUNT(*) FROM sent_messages s
-            WHERE trim(COALESCE(s.message_id,''))='' OR lower(trim(s.message_id)) NOT IN (
+            WHERE s.local_deleted_at IS NULL AND (trim(COALESCE(s.message_id,''))='' OR lower(trim(s.message_id)) NOT IN (
                 SELECT lower(trim(message_id)) FROM emails WHERE trim(COALESCE(message_id,''))<>''
-                AND (status='trash' OR pending_action LIKE 'trash%' OR (remote_missing=0 AND status='sent')))
+                AND (status='trash' OR pending_action LIKE 'trash%' OR (remote_missing=0 AND status='sent'))))
             """).fetchone()[0]
         queued_outbox = c.execute("""SELECT COUNT(*) FROM outbox o
             WHERE o.status IN ('queued','sending')

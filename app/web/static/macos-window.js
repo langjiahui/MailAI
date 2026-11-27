@@ -18,7 +18,7 @@
     cancelAnimationFrame(regionFrame);
     regionFrame = requestAnimationFrame(() => {
       if (!document.documentElement.matches('.macos-native-window,.integrated-workspace')) return;
-      const sidebar = document.querySelector('.layout > .sidebar');
+      const sidebar = document.querySelector('.layout > .sidebar:not(.rail-flyout)');
       if (sidebar && sidebar.getBoundingClientRect().width) {
         const style = getComputedStyle(sidebar);
         const width = parseFloat(style.width);

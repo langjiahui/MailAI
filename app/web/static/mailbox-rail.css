@@ -1,0 +1,55 @@
+#mailbox-rail { display:none; }
+#mailbox-sidebar-resize-help {
+  position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap;
+}
+@media (min-width:1025px) {
+  .layout.sidebar-compact { position:relative; }
+  .layout.sidebar-compact > .sidebar:not(.rail-flyout) { display:none; }
+  html[data-theme] body .layout.sidebar-compact > .sidebar.rail-flyout {
+    position:absolute; z-index:25; inset:0 auto 0 var(--sidebar-width);
+    display:block; width:280px; background:var(--desk-surface)!important;
+    border-right:1px solid var(--desk-line)!important;
+    box-shadow:10px 0 24px color-mix(in srgb,var(--desk-ink) 16%,transparent)!important;
+  }
+  .layout.sidebar-compact > #mailbox-rail {
+    position:relative; z-index:26; display:flex; flex-direction:column; align-items:center;
+    flex:0 0 var(--sidebar-width); min-width:0; gap:5px; padding:10px 4px;
+    background:var(--mac-rail,var(--desk-muted-surface));
+  }
+  .layout.sidebar-compact > #mailbox-rail::after {
+    content:""; position:absolute; inset:14px 0 14px auto; width:1px;
+    background:var(--desk-line); pointer-events:none;
+    -webkit-mask-image:linear-gradient(to bottom,transparent,#000 20%,#000 80%,transparent);
+    mask-image:linear-gradient(to bottom,transparent,#000 20%,#000 80%,transparent);
+  }
+  #mailbox-rail > button {
+    position:relative; display:grid; place-items:center; width:44px; height:44px;
+    padding:0; flex:none; border:1px solid transparent; border-radius:10px;
+    background:transparent; color:var(--desk-muted); cursor:pointer;
+  }
+  #mailbox-rail > button:hover { background:var(--desk-hover); color:var(--desk-ink); }
+  #mailbox-rail > button:is([aria-current="page"],[aria-expanded="true"]) {
+    background:var(--desk-selected); color:var(--desk-accent); border-color:var(--desk-line);
+  }
+  #mailbox-rail > button:focus-visible { outline:2px solid var(--desk-accent); outline-offset:1px; }
+  #mailbox-rail svg { width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:1.65; stroke-linecap:round; stroke-linejoin:round; }
+  #mailbox-rail > button > i:not([hidden]) {
+    position:absolute; top:7px; right:7px; width:7px; height:7px; border-radius:50%;
+    background:var(--desk-accent); box-shadow:0 0 0 2px var(--mac-rail,var(--desk-surface));
+  }
+  #mailbox-rail > button::after {
+    content:attr(data-tooltip); visibility:hidden; position:absolute; z-index:1;
+    left:calc(100% + 8px); padding:5px 8px; border-radius:6px;
+    background:var(--desk-ink); color:var(--desk-surface); font-size:12px; white-space:nowrap; pointer-events:none;
+  }
+  #mailbox-rail > button:focus-visible::after { visibility:visible; }
+  @media (hover:hover) {
+    #mailbox-rail > button:hover::after { visibility:visible; transition:visibility 0s .2s; }
+  }
+  #mailbox-rail > #mailbox-rail-folders[aria-expanded="true"]::after { visibility:hidden; transition:none; }
+}
+html[data-theme] body.assistant-rail-overlay #assistant-panel {
+  inset:var(--assistant-dock-top,64px) 0 0 auto!important;
+  width:min(360px,var(--assistant-viewport-width,100vw))!important;
+  min-height:0; max-height:none; z-index:45;
+}

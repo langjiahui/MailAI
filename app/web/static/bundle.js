@@ -1601,6 +1601,11 @@ if (typeof document !== 'undefined') {
 /* ---- i18n-catalog.js ---- */
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "rail.navigation": ["邮箱快捷导航", "Mailbox shortcuts"],
+  "rail.folders": ["邮箱与文件夹", "Accounts and folders"],
+  "rail.assistant": ["小邮", "Xiaoyou"],
+  "rail.resizeHelp": ["向左拖动收为图标，向右拖动展开。也可用左右方向键。", "Drag left to collapse to icons and right to expand. You can also use the left and right arrow keys."],
+  "sent.removeLocal": ["已从本机移除 {0} 封，可撤销", "Removed {0} from this device. You can undo this."],
   "sync.background": ["后台同步中", "Syncing in background"],
   "sync.inboxReady": ["可以开始看邮件了，历史邮件会在后台继续同步。", "Your inbox is ready. Older mail will keep syncing in the background."],
   "sync.viewProgress": ["查看进度", "View progress"],
@@ -23850,6 +23855,7 @@ function updateActiveNav() {
     btn.classList.toggle('active', active);
   });
   updateFacetScopeLabels();
+  window.mailaiMailboxRail?.sync();
 }
 
 function updateDomainFilter() {
@@ -24156,7 +24162,7 @@ function renderEmailList(emails, {silent = false} = {}) {
   emails = window.mailaiProductivityList?.(emails) || emails;
   const container = document.getElementById('email-list');
   renderedEmailIds = emails.filter(item => specialMailbox === 'sent'
-    ? !item._outbox && ['sent','accepted'].includes(item.status) && Number.isSafeInteger(Number(item.id)) && Number(item.id) !== 0
+    ? !item._outbox && ['sent','accepted','failed'].includes(item.status) && Number.isSafeInteger(Number(item.id)) && Number(item.id) !== 0
     : !item._kind).map(item => Number(item.id));
   const selectableIds = new Set(renderedEmailIds);
   const visibleEmails = emails.slice(0, mailRenderLimit);
@@ -24506,6 +24512,7 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
   const isOutboxQueued = Boolean(kind === 'sent' && row._outbox && row.status === 'queued');
   const canOutput = kind === 'sent' && !row._outbox;
   const canEditSent = canOutput && (row._remote || ['sent', 'accepted'].includes(row.status));
+  const canDeleteSent = canEditSent || (canOutput && failed);
   const originLabel = () => row._remote ? (kind === 'drafts' ? mailaiText('服务器草稿') : mailaiText('服务器已发送邮件'))
     : (kind === 'drafts' ? mailaiText('本地草稿')
       : isOutboxQueued ? (row.scheduled ? `${mailaiText('定时发送')}${row.due_at ? ' · ' + fmtDate(row.due_at) : ''}` : mailaiText('等待发送'))
@@ -24533,7 +24540,7 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
   const moreActions = canOutput ? renderReadingMoreActions(`<div class="reading-secondary-actions">${renderMailOutputButtons({
     id:row._remote ? row.remote_email_id : row.id,
     source:row._remote ? 'email' : 'sent', accountId:activeMailAccount()?.id,
-  })}</div>${canEditSent ? `<div class="reading-secondary-actions"><button type="button" class="special-delete" aria-label="删除邮件" title="删除邮件" data-i18n-aria="ui.2f9d72d5133f" data-i18n-title="ui.2f9d72d5133f">
+  })}</div>${canDeleteSent ? `<div class="reading-secondary-actions"><button type="button" class="special-delete" aria-label="删除邮件" title="删除邮件" data-i18n-aria="ui.2f9d72d5133f" data-i18n-title="ui.2f9d72d5133f">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l1 15h10l1-15M10 10v7M14 10v7"/><path class="hover-icon-part" d="M4 6h16M9 6V3h6v3"/></svg>
     <span data-i18n="ui.2f9d72d5133f">删除邮件</span></button></div>` : ''}`) : '';
   const actionBar = `<div class="special-mail-actions">${specialActionButtons}${moreActions}${canOutput ? '<div class="special-mail-direct-actions"></div>' : ''}</div>`;
@@ -24676,7 +24683,8 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
         const result = await api('/api/mail/sent/' + row.id, {accountId, method:'DELETE'});
         if (result.failed?.length) throw new Error(result.failed[0].error || mailaiText('删除失败'));
         if (removeTrashedSentRows([row.id], accountId)) void loadData({silent:true, requireFresh:true});
-        toast(mailaiText('已发送邮件已移入已删除，稍后同步服务器'), 'success');
+        toast(result.local_removed ? localSentRemovalMessage(result.local_removed) :
+          mailaiText('已发送邮件已移入已删除，稍后同步服务器'), 'success');
       } catch (error) { toast(mailaiSystemMessage(error.message), 'error'); }
       finally { button.disabled = false; }
     };
@@ -24966,6 +24974,10 @@ function setBulkOperationState(active, label = '', count = selectedMailIds.size)
   }
 }
 
+function localSentRemovalMessage(count) {
+  return mailaiTemplate`已从本机移除 ${count} 封，可撤销`;
+}
+
 async function runBulkAction(action, target = '') {
   if (action === 'purge') return purgeTrash(false);
   if (unifiedMailbox) return toast(mailaiText('请先选择具体邮箱，再批量处理邮件'), 'warn');
@@ -24983,15 +24995,16 @@ async function runBulkAction(action, target = '') {
   setBulkOperationState(true, actionLabel, count);
   const accountId = activeMailAccount()?.id;
   const undoCollector = [];
+  const result = {completed:0, localRemoved:0, failed:[], removed:[]};
   let undoPublished = false;
   const publishUndo = () => {
     if (undoPublished || !undoCollector.length) return;
     undoPublished = true;
     offerUndo(undoCollector.map(({token, at}) => ({token, at})), accountId,
-      {...undoCollector[0].details, count:undoCollector.reduce((sum, item) => sum + item.details.count, 0)});
+      {...undoCollector[0].details, label:result.localRemoved ? mailaiText('删除邮件') : undoCollector[0].details.label,
+        count:undoCollector.reduce((sum, item) => sum + item.details.count, 0)});
   };
   try {
-    const result = {completed:0, failed:[], removed:[]};
     for (let start = 0; start < payload.ids.length; start += 100) {
       const batch = payload.ids.slice(start, start + 100);
       setBulkOperationState(true, `${actionLabel} · ${start}/${count}`, count);
@@ -24999,6 +25012,7 @@ async function runBulkAction(action, target = '') {
         const part = await api(sentView ? '/api/mail/sent/bulk-trash' : '/api/emails/bulk', {accountId, undoCollector, method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sentView ? {ids:batch} : {...payload, ids:batch})});
         result.completed += part.completed; result.failed.push(...part.failed);
         if (sentView) {
+          result.localRemoved += part.local_removed || 0;
           const failedIds = new Set(part.failed.map(item => Number(item.id)));
           result.removed.push(...batch.filter(id => !failedIds.has(id)));
         }
@@ -25011,8 +25025,12 @@ async function runBulkAction(action, target = '') {
       } catch (error) { result.failed.push(...batch.map(id => ({id, error:error.message}))); }
     }
     publishUndo();
+    const movedToTrash = result.completed - result.localRemoved;
     const completedText = action === 'trash'
-      ? mailaiTemplate`已移入已删除 ${result.completed} 封，可在那里取消删除；稍后同步服务器`
+      ? [
+        movedToTrash || !result.localRemoved ? mailaiTemplate`已移入已删除 ${movedToTrash} 封，可在那里取消删除；稍后同步服务器` : '',
+        result.localRemoved ? localSentRemovalMessage(result.localRemoved) : '',
+      ].filter(Boolean).join(' · ')
       : action === 'read' || action === 'unread'
         ? mailaiTemplate`已标记 ${result.completed} 封邮件，服务器将在后台同步`
         : action === 'move' ? (localMove ? mailaiTemplate`已在本机移动 ${result.completed} 封邮件，未上传服务器` : mailaiTemplate`服务器已移动 ${result.completed} 封邮件，本地状态已更新`) : mailaiTemplate`已处理 ${result.completed} 封邮件`;
@@ -25708,6 +25726,7 @@ function mergeAccountSyncState(accountId, state) {
 }
 
 function renderSidebarAccounts() {
+  window.mailaiMailboxRail?.sync();
   if (typeof updateWorkspaceToolScope === 'function') updateWorkspaceToolScope();
   const accounts = _systemConfig?.accounts || [];
   const pausedControl = document.getElementById('auto-sync-paused');
@@ -32340,12 +32359,14 @@ function describeMailUndo(path, body, result, accountId) {
   try { payload = JSON.parse(body || '{}'); } catch (_) {}
   const query = new URLSearchParams(path.split('?')[1] || '');
   const cleanPath = path.split('?')[0];
-  const action = payload.action || (/^\/api\/mail\/sent\//.test(cleanPath) ? 'trash' : cleanPath.split('/').at(-1));
+  const action = payload.action || (/^\/api\/mail\/sent\//.test(cleanPath)
+    ? (result.local_removed ? 'sent-trash' : 'trash') : cleanPath.split('/').at(-1));
   const value = payload.value !== false && query.get('value') !== 'false';
   const moveTarget = payload.target || result.folder || query.get('target');
   const moveLabel = result.local_only ? (moveTarget === '__local_archive__' ? mailaiText('本地归档') : mailaiText('收件箱（仅本机）')) : moveTarget;
   const label = {read:value ? mailaiText('标为已读') : mailaiText('标为未读'), star:value ? mailaiText('添加星标') : mailaiText('取消星标'),
-    get trash() { return mailaiText('移入已删除'); }, move:mailaiTemplate`移动到“${moveLabel || mailaiText('目标文件夹')}”`}[action] || mailaiText('邮件操作');
+    get trash() { return mailaiText('移入已删除'); }, get 'sent-trash'() { return mailaiText('删除邮件'); },
+    move:mailaiTemplate`移动到“${moveLabel || mailaiText('目标文件夹')}”`}[action] || mailaiText('邮件操作');
   const account = typeof _systemConfig !== 'undefined' ? _systemConfig?.accounts?.find(item => item.id === accountId) : null;
   return {label, count:Math.max(0, (result.completed ?? 1) - (result.reconciled || 0)), accountLabel:account?.user || accountId || mailaiText('当前邮箱')};
 }
@@ -32423,7 +32444,7 @@ function showOperationFailures(items, retry) {
 
 function removeTrashedSentRows(ids, accountId) {
   if (!ids.length || activeMailAccount()?.id !== accountId) return false;
-  // Invalidate in-flight reads before removing rows already committed to Trash.
+  // Invalidate in-flight reads before removing rows already deleted locally.
   ++mailLoadRevision;
   window.mailaiMailboxStore?.invalidate(accountId);
   const removed = new Set(ids.map(Number));
@@ -33124,17 +33145,22 @@ function updateAssistantPlacement() {
   panel.style.setProperty('--assistant-viewport-width', `${viewportRight / scale}px`);
   panel.style.setProperty('--assistant-viewport-height', `${viewportBottom / scale}px`);
   const width = (viewportRight - viewportLeft) / scale;
-  const home = visible && !floating && workspaceVisible && !reading && width > 1024;
-  const docked = visible && !floating && workspaceVisible && reading && width >= 1600;
-  const split = visible && !floating && workspaceVisible && reading && width >= 1024 && width < 1600;
-  const compact = visible && !floating && workspaceVisible && reading && width < 1024;
+  const automatic = visible && !floating && workspaceVisible;
+  const rail = innerWidth > 1024 && layout.classList?.contains('sidebar-compact');
+  const railOverlay = automatic && rail && width < 1200;
+  const home = automatic && !rail && !reading && width > 1024;
+  const docked = automatic && (rail ? width >= 1200 : reading && width >= 1600);
+  const split = automatic && !rail && reading && width >= 1024 && width < 1600;
+  const compact = automatic && !rail && reading && width < 1024;
   const wasSplit = document.body.classList.contains('assistant-split');
   const list = document.getElementById('email-list');
   if (split && !wasSplit && list) assistantListScroll = {top:list.scrollTop, account:activeMailAccount()?.id};
-  const modeChanged = wasSplit !== split || document.body.classList.contains('assistant-docked') !== docked || document.body.classList.contains('assistant-compact') !== compact;
+  const modeChanged = wasSplit !== split || document.body.classList.contains('assistant-docked') !== docked ||
+    document.body.classList.contains('assistant-compact') !== compact || document.body.classList.contains('assistant-rail-overlay') !== railOverlay;
   const readingTop = pane.scrollTop;
   const readingNode = document.getElementById('reading-content').firstElementChild;
-  for (const [name, enabled] of [['assistant-home',home],['assistant-docked',docked],['assistant-split',split],['assistant-split-narrow',split && width < 1200],['assistant-compact',compact]]) {
+  for (const [name, enabled] of [['assistant-home',home],['assistant-docked',docked],['assistant-split',split],
+    ['assistant-split-narrow',split && innerWidth <= 1024],['assistant-compact',compact],['assistant-rail-overlay',railOverlay]]) {
     if (document.body.classList.contains(name) !== enabled) document.body.classList.toggle(name, enabled);
   }
   if (modeChanged && readingNode) requestAnimationFrame(() => { if (document.getElementById('reading-content').firstElementChild === readingNode) pane.scrollTop = readingTop; });
@@ -33142,7 +33168,7 @@ function updateAssistantPlacement() {
     const saved = assistantListScroll; assistantListScroll = null;
     requestAnimationFrame(() => { if (!document.body.classList.contains('assistant-split') && saved.account === activeMailAccount()?.id) list.scrollTop = saved.top; });
   }
-  if (docked || split) document.getElementById('assistant-panel').style.setProperty('--assistant-dock-top', `${layout.getBoundingClientRect().top / scale}px`);
+  if (docked || split || railOverlay) panel.style.setProperty('--assistant-dock-top', `${layout.getBoundingClientRect().top / scale}px`);
   if (home) {
     const rect = pane.getBoundingClientRect();
     const left = Math.max(viewportLeft, Math.min(rect.left, viewportRight));
@@ -33983,7 +34009,7 @@ function mailCardDate(value, now = new Date()) {
     handle.hidden=!enabled();
     if(handle.hidden){if(drag)finish(false);return;}
     const zoom=scale(),style=getComputedStyle(layout),box=layout.getBoundingClientRect();
-    const fixed=[...layout.children].filter(node=>node!==pane&&node.getClientRects().length);
+    const fixed=[...layout.children].filter(node=>node!==pane&&!node.classList.contains('rail-flyout')&&node.getClientRects().length);
     const reserved=fixed.reduce((sum,node)=>sum+node.getBoundingClientRect().width/zoom,0)
       +(parseFloat(style.columnGap)||0)*fixed.length+(parseFloat(style.paddingLeft)||0)+(parseFloat(style.paddingRight)||0);
     limits.max=Math.max(240,Math.min(720,Math.floor(innerWidth/zoom-box.left/zoom-reserved-440)));
@@ -39261,7 +39287,7 @@ function mailCardDate(value, now = new Date()) {
     cancelAnimationFrame(regionFrame);
     regionFrame = requestAnimationFrame(() => {
       if (!document.documentElement.matches('.macos-native-window,.integrated-workspace')) return;
-      const sidebar = document.querySelector('.layout > .sidebar');
+      const sidebar = document.querySelector('.layout > .sidebar:not(.rail-flyout)');
       if (sidebar && sidebar.getBoundingClientRect().width) {
         const style = getComputedStyle(sidebar);
         const width = parseFloat(style.width);
@@ -39401,8 +39427,8 @@ function mailCardDate(value, now = new Date()) {
   function alignWorkspace() {
     cancelAnimationFrame(regionFrame);
     regionFrame = requestAnimationFrame(() => {
-      const sidebar = document.querySelector('.layout>.sidebar');
-      if (!sidebar) return;
+      const sidebar = document.querySelector('.layout>.sidebar:not(.rail-flyout)');
+      if (!sidebar?.getBoundingClientRect().width) return;
       const style = getComputedStyle(sidebar), width = parseFloat(style.width);
       if (Number.isFinite(width)) {
         root.style.setProperty('--mac-sidebar-width', `${width}px`);
@@ -48712,9 +48738,13 @@ globalThis.MailAIModules?.register('backupMigration', {
 
 ;
 /* ---- pane-resizers.js ---- */
-/* Three-pane workspace resizer handles, constraints, and persistence. */
+/* Workspace resizers and the manually collapsed mailbox rail. */
 const PANE_SIZE_KEY = 'mailai.workspace.paneSizes.v1';
 const PANE_DEFAULTS = {sidebar: 226, list: 405};
+const SIDEBAR_COMPACT_KEY = 'mailai.workspace.sidebarCompact.v1';
+const SIDEBAR_RAIL_WIDTH = 56;
+const SIDEBAR_MIN_WIDTH = 180;
+const SIDEBAR_SNAP_WIDTH = 126;
 
 function paneSizePreferenceKey() {
   return document.body.dataset.mailListView === 'table' ? 'mailai.workspace.tablePaneSizes.v1' : PANE_SIZE_KEY;
@@ -48733,11 +48763,13 @@ function constrainPaneSizes(input, totalWidth) {
   const layout = document.querySelector('.layout');
   const total = totalWidth || layout?.clientWidth || window.innerWidth;
   const readingMin = Math.min(440, Math.max(360, total * .32));
-  let sidebar = Math.max(180, Math.min(380, Number(input.sidebar) || PANE_DEFAULTS.sidebar));
+  const compact = layout?.classList.contains('sidebar-compact') && innerWidth > 1024;
+  const sidebarMin = compact ? SIDEBAR_RAIL_WIDTH : SIDEBAR_MIN_WIDTH;
+  let sidebar = compact ? SIDEBAR_RAIL_WIDTH : Math.max(sidebarMin, Math.min(380, Number(input.sidebar) || PANE_DEFAULTS.sidebar));
   let list = Math.max(300, Math.min(720, Number(input.list) || PANE_DEFAULTS.list));
-  const available = Math.max(480, total - 24 - readingMin);
+  const available = Math.max(sidebarMin + 300, total - 24 - readingMin);
   if (sidebar + list > available) list = Math.max(300, available - sidebar);
-  if (sidebar + list > available) sidebar = Math.max(180, available - list);
+  if (sidebar + list > available) sidebar = Math.max(sidebarMin, available - list);
   return {sidebar:Math.round(sidebar), list:Math.round(list)};
 }
 
@@ -48749,31 +48781,117 @@ function applyPaneSizes(sizes, persist = false, totalWidth) {
   layout.style.setProperty('--list-width', value.list + 'px');
   document.querySelector('[data-resizer="sidebar"]')?.setAttribute('aria-valuenow', value.sidebar);
   document.querySelector('[data-resizer="list"]')?.setAttribute('aria-valuenow', value.list);
-  if (persist) localStorage.setItem(paneSizePreferenceKey(), JSON.stringify(value));
+  if (persist) localStorage.setItem(paneSizePreferenceKey(), JSON.stringify(sizes));
   return value;
 }
 
+function syncMailboxRail() {
+  const rail = document.getElementById('mailbox-rail');
+  const accounts = _systemConfig?.accounts || [];
+  const accountId = selectedMailboxAccountId || activeMailAccount()?.id;
+  const activeFolder = unifiedMailbox ? 'inbox' : currentServerFolder ? '' : specialMailbox || currentFilter.status;
+  for (const button of rail.querySelectorAll('[data-rail-folder]')) {
+    if (button.dataset.railFolder === activeFolder) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  }
+  rail.querySelector('i').hidden = !accounts.some(account =>
+    (unifiedMailbox || account.id === accountId) && Number(account.unread) > 0);
+}
+
 function initPaneResizers() {
+  const layout = document.querySelector('.layout');
+  const sidebar = document.getElementById('mailbox-sidebar');
+  const rail = document.getElementById('mailbox-rail');
+  const folderToggle = document.getElementById('mailbox-rail-folders');
+  const assistant = document.getElementById('mailbox-rail-assistant');
+  let compact = localStorage.getItem(SIDEBAR_COMPACT_KEY) === '1';
+  let cancelDrag;
+  const renderCompact = value => layout.classList.toggle('sidebar-compact', value);
+  const setFoldersOpen = (open, restoreFocus = false) => {
+    sidebar.classList.toggle('rail-flyout', open);
+    folderToggle.setAttribute('aria-expanded', String(open));
+    if (open) {
+      const firstFolder = [...sidebar.querySelectorAll('#account-mailbox-nav button, #folder-nav button')]
+        .find(button => button.getClientRects().length);
+      firstFolder?.focus({preventScroll:true});
+    } else if (restoreFocus) folderToggle.focus({preventScroll:true});
+  };
+  renderCompact(compact);
   let preferredSizes = readPaneSizes();
   let sizes = applyPaneSizes(preferredSizes);
+  const commit = (preferred, collapsed) => {
+    if (compact !== collapsed) localStorage.setItem(SIDEBAR_COMPACT_KEY, collapsed ? '1' : '0');
+    compact = collapsed;
+    renderCompact(compact);
+    preferredSizes = preferred;
+    sizes = applyPaneSizes(preferredSizes, true);
+    if (!compact) setFoldersOpen(false);
+    window.mailaiAssistantDivider?.update();
+  };
+  folderToggle.onclick = () => setFoldersOpen(!sidebar.classList.contains('rail-flyout'), true);
+  rail.addEventListener('click', event => {
+    const folder = event.target.closest('[data-rail-folder]')?.dataset.railFolder;
+    if (!folder) return;
+    setFoldersOpen(false);
+    const accounts = _systemConfig?.accounts || [];
+    const account = activeMailAccount();
+    const open = folder === 'inbox' && accounts.length > 1
+      ? openUnifiedInbox()
+      : account ? openAccountMailbox(account.id, folder, {fromStart:folder === 'inbox'}) : null;
+    open?.catch(error => toast(mailaiText('打开邮箱失败：') + mailaiSystemMessage(error.message), 'error'));
+  });
+  assistant.onclick = () => {
+    setFoldersOpen(false);
+    if (document.body.classList.contains('assistant-visible')) closeAssistant();
+    else openAssistant();
+  };
+  new MutationObserver(() => {
+    const open = String(document.body.classList.contains('assistant-visible'));
+    if (assistant.getAttribute('aria-expanded') !== open) assistant.setAttribute('aria-expanded', open);
+  }).observe(document.body, {attributes:true, attributeFilter:['class']});
+  const closeOutside = event => {
+    if (sidebar.classList.contains('rail-flyout') && !sidebar.contains(event.target) && !rail.contains(event.target))
+      setFoldersOpen(false);
+  };
+  document.addEventListener('pointerdown', closeOutside);
+  document.addEventListener('focusin', closeOutside);
+  sidebar.addEventListener('click', event => {
+    if (sidebar.classList.contains('rail-flyout') &&
+        event.target.closest('[data-account-action], [data-mobile-action], [data-server-folder], .nav-item[data-filter="status"], .nav-item[data-filter="special"]'))
+      setFoldersOpen(false, true);
+  });
+  document.addEventListener('keydown', event => {
+    if (event.key !== 'Escape') return;
+    const closeFolders = sidebar.classList.contains('rail-flyout') && !sidebar.querySelector('.account-menu[open]');
+    if (!cancelDrag && !closeFolders) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (cancelDrag) cancelDrag();
+    else setFoldersOpen(false, true);
+  }, true);
   document.querySelectorAll('.pane-resizer').forEach(handle => {
     const kind = handle.dataset.resizer;
-    handle.setAttribute('aria-valuemin', kind === 'sidebar' ? '180' : '300');
+    const isSidebar = kind === 'sidebar';
+    handle.setAttribute('aria-valuemin', isSidebar ? String(SIDEBAR_RAIL_WIDTH) : '300');
     handle.setAttribute('aria-valuemax', kind === 'sidebar' ? '380' : '720');
     handle.addEventListener('pointerdown', event => {
-      if (window.innerWidth <= 1024 || event.button !== 0 || handle.classList.contains('dragging')) return;
+      if (window.innerWidth <= 1024 || event.button !== 0 || cancelDrag) return;
       event.preventDefault();
+      handle.focus({preventScroll:true});
       const startX = event.clientX;
-      const start = {...sizes};
-      const layout = document.querySelector('.layout');
+      const startWidth = sizes[kind];
       // Cache geometry before writes and coalesce pointer bursts per frame.
       const totalWidth = layout.clientWidth;
       const scale = layout.getBoundingClientRect().width / totalWidth || 1;
       const pointerId = event.pointerId;
-      let latestX = startX, frame = 0;
+      let latestX = startX, frame = 0, candidate = preferredSizes, collapsed = compact;
       const flush = () => {
         frame = 0;
-        sizes = applyPaneSizes({...start, [kind]:start[kind] + (latestX - startX) / scale}, false, totalWidth);
+        const width = startWidth + (latestX - startX) / scale;
+        collapsed = isSidebar ? width < SIDEBAR_SNAP_WIDTH : compact;
+        candidate = isSidebar && collapsed ? preferredSizes : {...preferredSizes, [kind]:width};
+        renderCompact(collapsed);
+        sizes = applyPaneSizes(candidate, false, totalWidth);
       };
       handle.setPointerCapture(event.pointerId);
       handle.classList.add('dragging'); document.body.classList.add('pane-resizing');
@@ -48782,35 +48900,59 @@ function initPaneResizers() {
         latestX = moveEvent.clientX;
         if (!frame) frame = requestAnimationFrame(flush);
       };
-      const end = endEvent => {
-        if (endEvent.pointerId !== pointerId) return;
-        if (endEvent.type === 'pointerup') latestX = endEvent.clientX;
+      const finish = save => {
         cancelAnimationFrame(frame);
-        flush();
+        cancelDrag = null;
         handle.removeEventListener('pointerup', end);
         handle.removeEventListener('pointercancel', end);
         handle.removeEventListener('lostpointercapture', end);
         if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
         handle.removeEventListener('pointermove', move);
         handle.classList.remove('dragging'); document.body.classList.remove('pane-resizing');
-        sizes = applyPaneSizes(sizes, true);
-        preferredSizes = {...sizes};
+        if (save && Math.abs(latestX - startX) > 2) {
+          flush();
+          commit(isSidebar && collapsed ? preferredSizes : {...preferredSizes, [kind]:sizes[kind]}, collapsed);
+        } else {
+          renderCompact(compact);
+          sizes = applyPaneSizes(preferredSizes);
+        }
       };
+      const end = endEvent => {
+        if (endEvent.pointerId !== pointerId) return;
+        const released = endEvent.type === 'pointerup';
+        if (released) latestX = endEvent.clientX;
+        finish(released);
+      };
+      cancelDrag = () => finish(false);
       handle.addEventListener('pointermove', move);
       handle.addEventListener('pointerup', end);
       handle.addEventListener('pointercancel', end);
       handle.addEventListener('lostpointercapture', end);
     });
-    handle.addEventListener('dblclick', () => { preferredSizes = currentPaneDefaults(); sizes = applyPaneSizes(preferredSizes, true); toast(mailaiText('已恢复默认栏宽'), 'success'); });
+    handle.addEventListener('dblclick', () => {
+      commit({...preferredSizes, [kind]:currentPaneDefaults()[kind]}, isSidebar ? false : compact);
+      toast(mailaiText('已恢复默认栏宽'), 'success');
+    });
     handle.addEventListener('keydown', event => {
-      if (!['ArrowLeft','ArrowRight'].includes(event.key)) return;
+      if (!['ArrowLeft','ArrowRight'].includes(event.key) &&
+          !(isSidebar && ['Home','End','Enter'].includes(event.key))) return;
       event.preventDefault();
-      sizes = applyPaneSizes({...sizes, [kind]:sizes[kind] + (event.key === 'ArrowRight' ? 16 : -16)}, true);
-      preferredSizes = {...sizes};
+      const width = sizes[kind] + (event.key === 'ArrowRight' ? 16 : -16);
+      if (!isSidebar) commit({...preferredSizes, list:Math.max(300, Math.min(720,width))}, compact);
+      else if (event.key === 'Home' || event.key === 'Enter' && !compact || event.key === 'ArrowLeft' && width < SIDEBAR_MIN_WIDTH)
+        commit(preferredSizes, true);
+      else if (compact) commit(preferredSizes, false);
+      else commit({...preferredSizes, sidebar:event.key === 'End' ? 380 : Math.min(380,width)}, false);
     });
   });
   window.addEventListener('mailai:list-view-changed', () => { preferredSizes = readPaneSizes(); sizes = applyPaneSizes(preferredSizes); });
-  window.addEventListener('resize', () => { sizes = applyPaneSizes(preferredSizes); });
+  window.addEventListener('resize', () => {
+    cancelDrag?.();
+    if (innerWidth <= 1024) setFoldersOpen(false);
+    sizes = applyPaneSizes(preferredSizes);
+  });
+  window.mailaiMailboxRail = {sync:syncMailboxRail};
+  syncMailboxRail();
 }
 
 initPaneResizers();

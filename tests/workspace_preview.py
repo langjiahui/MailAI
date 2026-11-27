@@ -125,9 +125,15 @@ def main():
             local = receipt(f'Local sent {marker}', True)
             server_only = remote(f'Server sent {marker}', f'<{marker}-server@example.test>')
             missing_copy = receipt(f'Waiting for sync {marker}', False)
+            failed = db.create_sent_message(dict(subject=f'Failed {marker}', body_html='<p>Unsent fixture</p>'))
+            db.finish_sent_message(failed, ok=False, error='至少需要一个收件人')
+            blocked = remote(f'Protected server message {marker}', f'<{marker}-protected@example.test>')
+            with db.conn() as c:
+                c.execute("UPDATE emails SET cleanup_hold='fixture' WHERE id=?", (blocked,))
             subject = f'Queued {marker}'
             outbox.enqueue(marker, dict(to_addr=target, subject=subject), delay=3600)
-        return dict(local=local, server=-server_only, missing=missing_copy, queued=subject, token=marker)
+        return dict(local=local, server=-server_only, missing=missing_copy, failed=failed,
+                    blocked=-blocked, queued=subject, token=marker)
 
     if os.environ.get('MAILAI_SEARCH_FIXTURE') == '1':
         from app import mail_assistant, productivity

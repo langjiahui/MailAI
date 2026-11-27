@@ -26,8 +26,8 @@
   function alignWorkspace() {
     cancelAnimationFrame(regionFrame);
     regionFrame = requestAnimationFrame(() => {
-      const sidebar = document.querySelector('.layout>.sidebar');
-      if (!sidebar) return;
+      const sidebar = document.querySelector('.layout>.sidebar:not(.rail-flyout)');
+      if (!sidebar?.getBoundingClientRect().width) return;
       const style = getComputedStyle(sidebar), width = parseFloat(style.width);
       if (Number.isFinite(width)) {
         root.style.setProperty('--mac-sidebar-width', `${width}px`);

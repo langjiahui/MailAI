@@ -315,7 +315,8 @@ CREATE TABLE IF NOT EXISTS sent_messages (
     smtp_response TEXT,
     sent_folder TEXT,
     created_at TEXT,
-    sent_at TEXT
+    sent_at TEXT,
+    local_deleted_at TEXT
 );
 CREATE TABLE IF NOT EXISTS contacts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -537,9 +538,11 @@ def _run_migrations(c):
         if column not in _columns_of(c,'drafts'):
             c.execute(f'ALTER TABLE drafts ADD COLUMN {column} {definition}')
     c.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_drafts_document_reply_key ON drafts(document_reply_key)')
-    for column, definition in {'reply_to_email_id': 'INTEGER', 'in_reply_to': "TEXT DEFAULT ''", 'references_header': "TEXT DEFAULT ''"}.items():
+    for column, definition in {'reply_to_email_id': 'INTEGER', 'in_reply_to': "TEXT DEFAULT ''", 'references_header': "TEXT DEFAULT ''", 'local_deleted_at': 'TEXT'}.items():
         if column not in _columns_of(c, 'sent_messages'):
             c.execute(f'ALTER TABLE sent_messages ADD COLUMN {column} {definition}')
+    c.execute("""CREATE INDEX IF NOT EXISTS idx_deleted_sent_message_id
+        ON sent_messages(lower(trim(message_id))) WHERE local_deleted_at IS NOT NULL""")
     emails_cols = _columns_of(c, "emails")
     new_email_cols = {
         'arrival_kind': "TEXT DEFAULT ''",

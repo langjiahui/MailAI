@@ -15,7 +15,7 @@
     handle.hidden=!enabled();
     if(handle.hidden){if(drag)finish(false);return;}
     const zoom=scale(),style=getComputedStyle(layout),box=layout.getBoundingClientRect();
-    const fixed=[...layout.children].filter(node=>node!==pane&&node.getClientRects().length);
+    const fixed=[...layout.children].filter(node=>node!==pane&&!node.classList.contains('rail-flyout')&&node.getClientRects().length);
     const reserved=fixed.reduce((sum,node)=>sum+node.getBoundingClientRect().width/zoom,0)
       +(parseFloat(style.columnGap)||0)*fixed.length+(parseFloat(style.paddingLeft)||0)+(parseFloat(style.paddingRight)||0);
     limits.max=Math.max(240,Math.min(720,Math.floor(innerWidth/zoom-box.left/zoom-reserved-440)));

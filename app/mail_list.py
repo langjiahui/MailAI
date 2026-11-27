@@ -124,8 +124,8 @@ def _special_source(kind):
     outbox_union=''
     if kind=='sent':
         exclude=""" AND (coalesce(message_id,'')='' OR NOT EXISTS(SELECT 1 FROM sent_messages s WHERE lower(trim(s.message_id))=lower(trim(main.emails.message_id))))"""
-        local_where=""" WHERE coalesce(trim(message_id),'')='' OR NOT EXISTS(SELECT 1 FROM main.emails e
-            WHERE lower(trim(e.message_id))=lower(trim(sent_messages.message_id)) AND (e.status='trash' OR e.pending_action LIKE 'trash%'))"""
+        local_where=""" WHERE local_deleted_at IS NULL AND (coalesce(trim(message_id),'')='' OR NOT EXISTS(SELECT 1 FROM main.emails e
+            WHERE lower(trim(e.message_id))=lower(trim(sent_messages.message_id)) AND (e.status='trash' OR e.pending_action LIKE 'trash%')))"""
         outbox_attachments="""(SELECT coalesce(json_group_array(json_object('filename',coalesce(json_extract(value,'$.filename'),json_extract(value,'$.name'),'附件'),
             'size',coalesce(json_extract(value,'$.size'),0),'content_type',coalesce(json_extract(value,'$.content_type'),''))),'[]')
             FROM json_each(CASE WHEN json_valid(json_extract(payload,'$.attachments')) THEN json_extract(payload,'$.attachments') ELSE '[]' END))"""
@@ -227,9 +227,9 @@ def page(filters, *, cursor='', limit=200, refresh=False, around_id=0):
                 if row[0]!='trash':counts['all']+=row[2]
                 if row[1]:counts['local'][row[0]]=counts['local'].get(row[0],0)+row[2]
             receipts=c.execute("""SELECT COUNT(*) FROM sent_messages s
-                WHERE trim(COALESCE(s.message_id,''))='' OR lower(trim(s.message_id)) NOT IN (
+                WHERE s.local_deleted_at IS NULL AND (trim(COALESCE(s.message_id,''))='' OR lower(trim(s.message_id)) NOT IN (
                     SELECT lower(trim(message_id)) FROM main.emails WHERE trim(COALESCE(message_id,''))<>''
-                    AND (status='trash' OR pending_action LIKE 'trash%' OR (remote_missing=0 AND status='sent')))
+                    AND (status='trash' OR pending_action LIKE 'trash%' OR (remote_missing=0 AND status='sent'))))
                 """).fetchone()[0]
             queued_outbox=c.execute("""SELECT COUNT(*) FROM outbox o
                 WHERE o.status IN ('queued','sending')

@@ -49,6 +49,75 @@ const {chromium,webkit}=require('playwright');
         });
         assert(!geometry.overflow&&geometry.reading>=439,JSON.stringify({viewport,zoom,geometry}));
       }
+      const sidebarHandle=page.locator('[data-resizer="sidebar"]');
+      const rail=page.locator('#mailbox-rail');
+      const folders=rail.locator('#mailbox-rail-folders');
+      await page.setViewportSize({width:1280,height:900});
+      await settle();
+      const stretch=async (delta, cancel=false)=>{
+        const box=await sidebarHandle.boundingBox();
+        await page.mouse.move(box.x+box.width/2,box.y+box.height/2);
+        await page.mouse.down();
+        await page.mouse.move(box.x+box.width/2+delta,box.y+box.height/2,{steps:8});
+        if(cancel) await page.keyboard.press('Escape');
+        await page.mouse.up();
+        await settle();
+      };
+      assert(!await rail.isVisible(),'The standard sidebar is expanded by default');
+      await stretch(-150,true);
+      assert(!await rail.isVisible(),'Canceled drag leaves the expanded sidebar in place');
+      await stretch(-150);
+      assert(await rail.isVisible(),'Dragging left reveals the icon rail');
+      assert(await handle.isVisible(),'The collapsed sidebar allows the list to stay visible beside the assistant');
+      assert.equal(await sidebarHandle.getAttribute('aria-valuenow'),'56');
+      const bounds=await page.evaluate(()=>{
+        const nodes=['#mailbox-rail','.list-pane','.reading-pane','#assistant-panel'];
+        return nodes.map(selector=>{
+          const rect=document.querySelector(selector).getBoundingClientRect();
+          return {left:rect.left,right:rect.right,width:rect.width};
+        });
+      });
+      assert(bounds.every((rect,i)=>rect.width>0 && (i===0 || rect.left>=bounds[i-1].right-1)),JSON.stringify(bounds));
+      assert(Math.abs(bounds[2].right-bounds[3].left)<2 && bounds[2].width>=439,JSON.stringify(bounds));
+      await folders.click();
+      assert.equal(await folders.getAttribute('aria-expanded'),'true');
+      assert(await page.locator('#account-mailbox-nav').isVisible());
+      await page.evaluate(()=>setI18nLanguage('en'));
+      await settle();
+      assert.equal(await folders.getAttribute('data-tooltip'),'Accounts and folders');
+      assert(Math.abs((await page.locator('#assistant-panel').boundingBox()).width-bounds[3].width)<2,
+        'The folder flyout does not reserve space in the docked layout');
+      await page.evaluate(()=>setI18nLanguage('zh-CN'));
+      assert.equal(await folders.getAttribute('data-tooltip'),'邮箱与文件夹');
+      await page.keyboard.press('Escape');
+      assert.equal(await folders.getAttribute('aria-expanded'),'false');
+      assert(await folders.evaluate(button=>button===document.activeElement));
+      await folders.click();
+      await page.locator('#account-mailbox-nav .unified-inbox-button').click();
+      await page.waitForFunction(()=>unifiedMailbox);
+      assert.equal(await folders.getAttribute('aria-expanded'),'false');
+      await rail.locator('[data-rail-folder="sent"]').click();
+      await page.waitForFunction(()=>specialMailbox==='sent');
+      assert.equal(await rail.locator('[data-rail-folder="sent"]').getAttribute('aria-current'),'page');
+      await page.setViewportSize({width:1100,height:900});
+      await page.waitForFunction(()=>document.body.classList.contains('assistant-rail-overlay'));
+      assert(await rail.isVisible());
+      assert(await page.locator('.list-pane').isVisible());
+      assert(!await page.locator('#assistant-dock-divider').isVisible());
+      await page.setViewportSize({width:900,height:900});
+      assert(!await rail.isVisible());
+      await page.setViewportSize({width:1280,height:900});
+      assert(await rail.isVisible());
+      await page.reload();
+      await page.locator('#app-preloader').waitFor({state:'hidden'});
+      assert(await rail.isVisible(),'The manually collapsed state survives reload');
+      await stretch(150);
+      assert(!await rail.isVisible(),'Dragging right expands the normal sidebar');
+      await sidebarHandle.focus();
+      await page.keyboard.press('Home');
+      assert(await rail.isVisible(),'The separator can collapse with the keyboard');
+      await page.keyboard.press('ArrowRight');
+      assert(!await rail.isVisible(),'The separator can expand with the keyboard');
       console.log(`PASS ${engine.name()}: docked list drag, keyboard, reopen/reload, narrow layouts and zoom`);
     }finally{await browser.close();}
   }

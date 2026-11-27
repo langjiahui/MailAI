@@ -174,14 +174,26 @@ def test_special_and_unified():
         unconfirmed = db.create_sent_message({'to_addr':'recipient@example.test','subject':'Still sending'})
         inbox = db.list_emails(status='inbox',days=9999,limit=1)[0]['id']
         batch = compose.api_bulk_trash_sent(SentTrashRequest(ids=[-server_only, local, local, receipt, unconfirmed, -inbox]))
-        assert batch['queued'] == batch['completed'] == 2
-        assert {row['id'] for row in batch['failed']} == {receipt, unconfirmed, -inbox}
+        assert batch['queued'] == 2 and batch['completed'] == 3 and batch['local_removed'] == 1
+        assert {row['id'] for row in batch['failed']} == {unconfirmed, -inbox}
+        assert db.get_sent_message(receipt)['local_deleted_at']
+        assert db.get_sent_message(unconfirmed)['status'] == 'sending'
+        assert all(row['id'] != receipt for row in mail_list.page({'special':'sent'})['items'])
         assert db.get_email(inbox)['status'] == 'inbox' and not db.get_email(inbox)['pending_action']
         assert db.get_email(copy)['pending_action'] == 'trash'
         repeated = compose.api_bulk_trash_sent(SentTrashRequest(ids=[-server_only, local]))
         assert repeated['completed'] == repeated['reconciled'] == 2 and repeated['undo_token'] is None
         assert not restore(batch['undo_token'])['failed']
         assert not db.get_email(server_only)['pending_action'] and not db.get_email(copy)['pending_action']
+        assert not db.get_sent_message(receipt)['local_deleted_at']
+        legacy = db.create_sent_message({'subject':'Legacy receipt without Message-ID'})
+        db.finish_sent_message(legacy,ok=True)
+        single = compose.api_delete_sent_message(legacy)
+        assert single['completed'] == single['local_removed'] == 1 and single['queued'] == 0
+        assert single['undo_token'] and not single['failed']
+        assert db.get_sent_message(legacy)['local_deleted_at']
+        assert restore(single['undo_token'])['ok']
+        assert not db.get_sent_message(legacy)['local_deleted_at']
         other=dict(values,ACCOUNT_ID='other',DB_PATH=str(root/'other.db'),IMAP_USER='other@example.test')
         with use(other):db.init_db();seed(3)
         registry={'accounts':{key:{'db_path':v['DB_PATH'],'user':v['IMAP_USER']} for key,v in [('a',values),('b',other)]}}
@@ -197,6 +209,54 @@ def test_special_and_unified():
             assert mail_list.page({'unified':True})['total']==3
 
 
+def test_failed_and_late_sent_deletions():
+    from app.mail_undo import restore
+    from app.productivity import search
+    from app.web.routes import compose, mail_read
+    from app.web.schemas import SentTrashRequest
+    with fixture():
+        failed = db.create_sent_message({'subject':'Failed fixture', 'body_html':'<p>Unsent body</p>'})
+        db.finish_sent_message(failed, ok=False, error='至少需要一个收件人')
+        assert compose.api_sent_preview(failed) == {'body_text':'Unsent body'}
+        message_id = '<late-copy@example.test>'
+        receipt = db.create_sent_message({'subject':'Late copy fixture', 'message_id':message_id})
+        db.finish_sent_message(receipt, ok=True, message_id=message_id)
+        inbox = db.upsert_email({'uid':91, 'status':'inbox', 'message_id':message_id})
+        with patch.object(compose.smtp_client, 'send', side_effect=AssertionError('SMTP called during deletion')):
+            removed = compose.api_bulk_trash_sent(SentTrashRequest(ids=[failed,receipt]))
+        assert removed['ok'] and removed['completed'] == removed['local_removed'] == 2
+        assert removed['queued'] == 0
+        assert compose.api_delete_sent_message(failed)['already_trashed']
+        db.init_db()
+        assert mail_list.page({'special':'sent'})['total'] == 0
+        assert mail_read.api_mailbox_counts()['totals']['sent'] == 0
+        assert not compose.api_sent_messages()
+        assert not search({'mailbox':'sent', 'query':'Late copy fixture'})['items']
+        copy = db.upsert_email({'uid':92, 'folder':'Sent', 'status':'sent',
+                                'review_source':'folder_sync', 'message_id':message_id.upper()})
+        db.reconcile_folder('Sent', [92])
+        assert db.get_email(copy)['pending_action'] == 'trash'
+        assert db.get_email(inbox)['remote_missing'] == 0
+        assert mail_list.page({'special':'sent'})['total'] == 0
+        assert {row['id'] for row in mail_list.page({'status':'trash'})['items']} == {copy}
+        assert restore(removed['undo_token'])['ok']
+        assert not db.get_email(copy)['pending_action']
+        assert {row['id'] for row in mail_list.page({'special':'sent'})['items']} == {failed,receipt}
+        with db.conn() as connection:
+            connection.execute('UPDATE emails SET remote_missing=1 WHERE id=?', (copy,))
+        assert compose.api_delete_sent_message(receipt)['local_removed'] == 1
+        from app import pipeline
+        pipeline._store_folder_message('Sent', 'sent', 92, b'Subject: Fixture\r\n\r\nBody', ['\\Seen'])
+        assert db.get_email(copy)['pending_action'] == 'trash'
+        assert db.cancel_pending_trash(copy)
+        assert not db.get_sent_message(receipt)['local_deleted_at']
+        assert compose.api_delete_sent_message(receipt)['queued'] == 1
+        assert db.finish_trash_action(copy, 'Trash', 192)
+        assert {row['id'] for row in mail_list.page({'special':'sent'})['items']} == {failed}
+        assert {row['id'] for row in mail_list.page({'status':'trash'})['items']} == {copy}
+
+
 if __name__=='__main__':
     test_large_mailbox();test_complete_pagination_and_conversations();test_legacy_identity_recovery();test_special_and_unified()
+    test_failed_and_late_sent_deletions()
     print('PASS bounded mailbox reads, 100k metadata, complete facets, stable cursors, identities, special and unified mailboxes')

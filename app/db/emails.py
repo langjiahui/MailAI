@@ -73,6 +73,9 @@ def upsert_email(e: dict) -> int:
             apply_to_email(c, row['id'], e)
             from ..triage_rules import apply_to_ingested_email
             apply_to_ingested_email(c, row['id'], e)
+        if row and e.get('status') == 'sent' and e.get('review_source') == 'folder_sync':
+            from .trash import queue_discovered_sent_copy
+            queue_discovered_sent_copy(c, row['id'])
         return row["id"]
 
 

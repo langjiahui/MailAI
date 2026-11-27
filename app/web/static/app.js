@@ -3401,6 +3401,7 @@ function updateActiveNav() {
     btn.classList.toggle('active', active);
   });
   updateFacetScopeLabels();
+  window.mailaiMailboxRail?.sync();
 }
 
 function updateDomainFilter() {
@@ -3707,7 +3708,7 @@ function renderEmailList(emails, {silent = false} = {}) {
   emails = window.mailaiProductivityList?.(emails) || emails;
   const container = document.getElementById('email-list');
   renderedEmailIds = emails.filter(item => specialMailbox === 'sent'
-    ? !item._outbox && ['sent','accepted'].includes(item.status) && Number.isSafeInteger(Number(item.id)) && Number(item.id) !== 0
+    ? !item._outbox && ['sent','accepted','failed'].includes(item.status) && Number.isSafeInteger(Number(item.id)) && Number(item.id) !== 0
     : !item._kind).map(item => Number(item.id));
   const selectableIds = new Set(renderedEmailIds);
   const visibleEmails = emails.slice(0, mailRenderLimit);
@@ -4057,6 +4058,7 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
   const isOutboxQueued = Boolean(kind === 'sent' && row._outbox && row.status === 'queued');
   const canOutput = kind === 'sent' && !row._outbox;
   const canEditSent = canOutput && (row._remote || ['sent', 'accepted'].includes(row.status));
+  const canDeleteSent = canEditSent || (canOutput && failed);
   const originLabel = () => row._remote ? (kind === 'drafts' ? mailaiText('服务器草稿') : mailaiText('服务器已发送邮件'))
     : (kind === 'drafts' ? mailaiText('本地草稿')
       : isOutboxQueued ? (row.scheduled ? `${mailaiText('定时发送')}${row.due_at ? ' · ' + fmtDate(row.due_at) : ''}` : mailaiText('等待发送'))
@@ -4084,7 +4086,7 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
   const moreActions = canOutput ? renderReadingMoreActions(`<div class="reading-secondary-actions">${renderMailOutputButtons({
     id:row._remote ? row.remote_email_id : row.id,
     source:row._remote ? 'email' : 'sent', accountId:activeMailAccount()?.id,
-  })}</div>${canEditSent ? `<div class="reading-secondary-actions"><button type="button" class="special-delete" aria-label="删除邮件" title="删除邮件" data-i18n-aria="ui.2f9d72d5133f" data-i18n-title="ui.2f9d72d5133f">
+  })}</div>${canDeleteSent ? `<div class="reading-secondary-actions"><button type="button" class="special-delete" aria-label="删除邮件" title="删除邮件" data-i18n-aria="ui.2f9d72d5133f" data-i18n-title="ui.2f9d72d5133f">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l1 15h10l1-15M10 10v7M14 10v7"/><path class="hover-icon-part" d="M4 6h16M9 6V3h6v3"/></svg>
     <span data-i18n="ui.2f9d72d5133f">删除邮件</span></button></div>` : ''}`) : '';
   const actionBar = `<div class="special-mail-actions">${specialActionButtons}${moreActions}${canOutput ? '<div class="special-mail-direct-actions"></div>' : ''}</div>`;
@@ -4227,7 +4229,8 @@ async function selectSpecialMessage(id, suppliedRow = null) {  const kind = spec
         const result = await api('/api/mail/sent/' + row.id, {accountId, method:'DELETE'});
         if (result.failed?.length) throw new Error(result.failed[0].error || mailaiText('删除失败'));
         if (removeTrashedSentRows([row.id], accountId)) void loadData({silent:true, requireFresh:true});
-        toast(mailaiText('已发送邮件已移入已删除，稍后同步服务器'), 'success');
+        toast(result.local_removed ? localSentRemovalMessage(result.local_removed) :
+          mailaiText('已发送邮件已移入已删除，稍后同步服务器'), 'success');
       } catch (error) { toast(mailaiSystemMessage(error.message), 'error'); }
       finally { button.disabled = false; }
     };
@@ -4517,6 +4520,10 @@ function setBulkOperationState(active, label = '', count = selectedMailIds.size)
   }
 }
 
+function localSentRemovalMessage(count) {
+  return mailaiTemplate`已从本机移除 ${count} 封，可撤销`;
+}
+
 async function runBulkAction(action, target = '') {
   if (action === 'purge') return purgeTrash(false);
   if (unifiedMailbox) return toast(mailaiText('请先选择具体邮箱，再批量处理邮件'), 'warn');
@@ -4534,15 +4541,16 @@ async function runBulkAction(action, target = '') {
   setBulkOperationState(true, actionLabel, count);
   const accountId = activeMailAccount()?.id;
   const undoCollector = [];
+  const result = {completed:0, localRemoved:0, failed:[], removed:[]};
   let undoPublished = false;
   const publishUndo = () => {
     if (undoPublished || !undoCollector.length) return;
     undoPublished = true;
     offerUndo(undoCollector.map(({token, at}) => ({token, at})), accountId,
-      {...undoCollector[0].details, count:undoCollector.reduce((sum, item) => sum + item.details.count, 0)});
+      {...undoCollector[0].details, label:result.localRemoved ? mailaiText('删除邮件') : undoCollector[0].details.label,
+        count:undoCollector.reduce((sum, item) => sum + item.details.count, 0)});
   };
   try {
-    const result = {completed:0, failed:[], removed:[]};
     for (let start = 0; start < payload.ids.length; start += 100) {
       const batch = payload.ids.slice(start, start + 100);
       setBulkOperationState(true, `${actionLabel} · ${start}/${count}`, count);
@@ -4550,6 +4558,7 @@ async function runBulkAction(action, target = '') {
         const part = await api(sentView ? '/api/mail/sent/bulk-trash' : '/api/emails/bulk', {accountId, undoCollector, method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(sentView ? {ids:batch} : {...payload, ids:batch})});
         result.completed += part.completed; result.failed.push(...part.failed);
         if (sentView) {
+          result.localRemoved += part.local_removed || 0;
           const failedIds = new Set(part.failed.map(item => Number(item.id)));
           result.removed.push(...batch.filter(id => !failedIds.has(id)));
         }
@@ -4562,8 +4571,12 @@ async function runBulkAction(action, target = '') {
       } catch (error) { result.failed.push(...batch.map(id => ({id, error:error.message}))); }
     }
     publishUndo();
+    const movedToTrash = result.completed - result.localRemoved;
     const completedText = action === 'trash'
-      ? mailaiTemplate`已移入已删除 ${result.completed} 封，可在那里取消删除；稍后同步服务器`
+      ? [
+        movedToTrash || !result.localRemoved ? mailaiTemplate`已移入已删除 ${movedToTrash} 封，可在那里取消删除；稍后同步服务器` : '',
+        result.localRemoved ? localSentRemovalMessage(result.localRemoved) : '',
+      ].filter(Boolean).join(' · ')
       : action === 'read' || action === 'unread'
         ? mailaiTemplate`已标记 ${result.completed} 封邮件，服务器将在后台同步`
         : action === 'move' ? (localMove ? mailaiTemplate`已在本机移动 ${result.completed} 封邮件，未上传服务器` : mailaiTemplate`服务器已移动 ${result.completed} 封邮件，本地状态已更新`) : mailaiTemplate`已处理 ${result.completed} 封邮件`;
@@ -5259,6 +5272,7 @@ function mergeAccountSyncState(accountId, state) {
 }
 
 function renderSidebarAccounts() {
+  window.mailaiMailboxRail?.sync();
   if (typeof updateWorkspaceToolScope === 'function') updateWorkspaceToolScope();
   const accounts = _systemConfig?.accounts || [];
   const pausedControl = document.getElementById('auto-sync-paused');

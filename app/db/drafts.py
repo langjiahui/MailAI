@@ -152,7 +152,7 @@ def list_sent_messages(limit: int = 500):
         rows = [dict(r) for r in c.execute(
             "SELECT id,message_id,from_addr,to_addr,cc_addr,bcc_addr,subject,"
             "substr(body_html,1,1000) AS body_html,attachments_json,status,error,smtp_response,"
-            "sent_folder,created_at,sent_at FROM sent_messages "
+            "sent_folder,created_at,sent_at FROM sent_messages WHERE local_deleted_at IS NULL "
             "ORDER BY COALESCE(sent_at,created_at) DESC LIMIT ?", (max(1, min(limit, 500)),)
         ).fetchall()]
     for row in rows:

@@ -43,6 +43,46 @@ def queue_trash(email_ids: list[int], delay_seconds: int = 120, *, connection=No
     return before, after
 
 
+def queue_discovered_sent_copy(connection, email_id):
+    """Apply a local Sent deletion as soon as its IMAP copy is indexed."""
+    request = connection.execute("""
+        SELECT 1 FROM emails e JOIN sent_messages s
+            ON lower(trim(s.message_id))=lower(trim(e.message_id))
+        WHERE e.id=? AND e.status='sent' AND e.is_local_archive=0
+            AND trim(e.message_id)<>'' AND s.local_deleted_at IS NOT NULL
+            AND s.status IN ('sent','accepted') LIMIT 1
+        """, (email_id,)).fetchone()
+    if request:
+        before, _ = queue_trash([email_id], connection=connection)
+        if before:
+            from .audit import add_audit_log
+            add_audit_log(email_id, 'queue_trash', actor='user', reason='本地立即隐藏，后台同步服务器垃圾箱', connection=connection)
+
+
+def restore_local_sent_trash(record_id, deleted_at):
+    from ..trash_queue import mutation_lock
+    with mutation_lock(), conn() as connection:
+        connection.execute('BEGIN IMMEDIATE')
+        receipt = connection.execute(
+            'SELECT status,message_id FROM sent_messages WHERE id=? AND local_deleted_at=?',
+            (record_id, deleted_at),
+        ).fetchone()
+        if not receipt:
+            return False
+        message_id = (receipt['message_id'] or '').strip().lower()
+        if message_id and receipt['status'] in ('sent', 'accepted'):
+            copies = connection.execute("""
+                SELECT id,status,pending_action FROM emails WHERE lower(trim(message_id))=?
+                    AND status IN ('sent','trash') AND (status='trash' OR pending_action LIKE 'trash%')
+                """, (message_id,)).fetchall()
+            if any(row['status'] == 'trash' or row['pending_action'] not in ('trash', 'trash_local') for row in copies):
+                return False
+            for row in copies:
+                _cancel_pending_trash(row['id'], connection=connection)
+        connection.execute('UPDATE sent_messages SET local_deleted_at=NULL WHERE id=?', (record_id,))
+        return True
+
+
 def due_trash_actions(limit: int = 200) -> list[dict]:
     """Return due phases. Rows remain queued until their remote phase is committed."""
     discard_exhausted_trash_actions()
@@ -129,9 +169,9 @@ def cancel_pending_trash(email_id: int) -> bool:
         return _cancel_pending_trash(email_id)
 
 
-def _cancel_pending_trash(email_id: int) -> bool:
+def _cancel_pending_trash(email_id: int, *, connection=None) -> bool:
     """Restore locally before remote work starts or after its retry budget ends."""
-    with conn() as c:
+    with (nullcontext(connection) if connection is not None else conn()) as c:
         # A discarded sync has no remaining remote work. Restore its local copy
         # without guessing whether the server's move completed.
         changed = c.execute(
@@ -140,11 +180,15 @@ def _cancel_pending_trash(email_id: int) -> bool:
             "status=CASE WHEN status='trash' THEN 'inbox' ELSE status END "
             "WHERE id=? AND pending_action='trash_local'", (email_id,),
         ).rowcount
+        if not changed:
+            changed = c.execute(
+                "UPDATE emails SET remote_missing=0,pending_action='',pending_target='',pending_target_uid=NULL,"
+                "pending_due_at=NULL,pending_attempts=0,pending_error='' WHERE id=? AND pending_action='trash'",
+                (email_id,),
+            ).rowcount
         if changed:
-            return True
-        c.execute(
-            "UPDATE emails SET remote_missing=0,pending_action='',pending_target='',pending_target_uid=NULL,"
-            "pending_due_at=NULL,pending_attempts=0,pending_error='' WHERE id=? AND pending_action='trash'",
-            (email_id,),
-        )
-        return bool(c.execute("SELECT changes()").fetchone()[0])
+            c.execute("""UPDATE sent_messages SET local_deleted_at=NULL
+                WHERE local_deleted_at IS NOT NULL AND status IN ('sent','accepted')
+                    AND lower(trim(message_id))=(SELECT lower(trim(message_id)) FROM emails
+                        WHERE id=? AND status='sent' AND trim(message_id)<>'')""", (email_id,))
+        return bool(changed)

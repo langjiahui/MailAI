@@ -1,5 +1,10 @@
 /* Code-defined interface and service copy. Stable keys preserve protocol values and user content. */
 const MAILAI_UI_COPY = {
+  "rail.navigation": ["邮箱快捷导航", "Mailbox shortcuts"],
+  "rail.folders": ["邮箱与文件夹", "Accounts and folders"],
+  "rail.assistant": ["小邮", "Xiaoyou"],
+  "rail.resizeHelp": ["向左拖动收为图标，向右拖动展开。也可用左右方向键。", "Drag left to collapse to icons and right to expand. You can also use the left and right arrow keys."],
+  "sent.removeLocal": ["已从本机移除 {0} 封，可撤销", "Removed {0} from this device. You can undo this."],
   "sync.background": ["后台同步中", "Syncing in background"],
   "sync.inboxReady": ["可以开始看邮件了，历史邮件会在后台继续同步。", "Your inbox is ready. Older mail will keep syncing in the background."],
   "sync.viewProgress": ["查看进度", "View progress"],

@@ -29,21 +29,22 @@ def restore(token):
         from .local_mail import restore as restore_local
         return restore_local(operation['before'], operation['after'])
     if operation['action'] == 'trash_pending':
-        failed = []
+        failed, before_retry, after_retry = [], [], []
         for before, after in zip(operation['before'], operation['after']):
-            row = db.get_email(before['id'])
-            if (not row or row.get('pending_action') != after.get('pending_action')
-                    or int(row.get('remote_missing') or 0) != int(after.get('remote_missing') or 0)
-                    or not db.cancel_pending_trash(before['id'])):
+            if after.get('local_deleted_at'):
+                restored = db.restore_local_sent_trash(before['id'], after['local_deleted_at'])
+            else:
+                row = db.get_email(before['id'])
+                restored = (row and row.get('pending_action') == after.get('pending_action')
+                            and int(row.get('remote_missing') or 0) == int(after.get('remote_missing') or 0)
+                            and db.cancel_pending_trash(before['id']))
+                if restored:
+                    db.add_audit_log(before['id'], 'undo_trash_pending', actor='user')
+            if not restored:
                 failed.append({'id': before['id'], 'error': '邮件已开始同步服务器，不能再撤销本地任务'})
-                continue
-            db.add_audit_log(before['id'], 'undo_trash_pending', actor='user')
-        failed_ids = {item['id'] for item in failed}
-        retry = record(
-            operation['action'],
-            [item for item in operation['before'] if item['id'] in failed_ids],
-            [item for item in operation['after'] if item['id'] in failed_ids],
-        ) if failed else None
+                before_retry.append(before)
+                after_retry.append(after)
+        retry = record(operation['action'], before_retry, after_retry) if failed else None
         return {'ok': not failed, 'failed': failed, 'retry_token': retry}
     if operation['action'] == 'read':
         failed = []
